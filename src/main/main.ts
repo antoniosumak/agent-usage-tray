@@ -4,10 +4,12 @@ import { createTray, updateTray } from "./tray";
 import { initialQuotaState, startQuota, QuotaState } from "./quota";
 import { initialCostState, startCost, CostState } from "./cost";
 import { applyLoginItem, loadSettings, sanitizeSettings, saveSettings } from "./settings";
+import { checkThreshold } from "./notify";
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  app.setAppUserModelId("io.bozic.agent-usage"); // Windows toasts need an AUMID
   app.whenReady().then(() => {
     let settings = loadSettings();
     applyLoginItem(settings);
@@ -36,6 +38,7 @@ if (!app.requestSingleInstanceLock()) {
 
     const quotaPoller = startQuota(intervalMs(), (s) => {
       quota = s;
+      checkThreshold(quota, settings.warnThresholdPct);
       push();
     });
     const costPoller = startCost(intervalMs(), (s) => {
