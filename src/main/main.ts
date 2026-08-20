@@ -5,6 +5,7 @@ import { initialQuotaState, startQuota, QuotaState } from "./quota";
 import { initialCostState, startCost, CostState } from "./cost";
 import { applyLoginItem, loadSettings, sanitizeSettings, saveSettings } from "./settings";
 import { checkThreshold } from "./notify";
+import { openReleasePage, startUpdates, UpdateInfo } from "./updates";
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -31,10 +32,17 @@ if (!app.requestSingleInstanceLock()) {
 
     let quota: QuotaState = initialQuotaState;
     let cost: CostState = initialCostState;
+    let update: UpdateInfo | null = null;
     const push = () => {
-      win.webContents.send("state", { quota, cost, settings });
+      win.webContents.send("state", { quota, cost, settings, update });
       updateTray(tray, quota);
     };
+
+    startUpdates((u) => {
+      update = u;
+      push();
+    });
+    ipcMain.on("open-update", openReleasePage);
 
     const quotaPoller = startQuota(intervalMs(), (s) => {
       quota = s;

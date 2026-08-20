@@ -37,6 +37,7 @@ interface Snapshot {
   quota: QuotaState;
   cost: CostState;
   settings: Settings;
+  update: { version: string } | null;
 }
 
 declare global {
@@ -45,6 +46,7 @@ declare global {
       onState(cb: (snapshot: Snapshot) => void): void;
       refresh(): void;
       setSettings(patch: Partial<Settings>): void;
+      openUpdate(): void;
     };
   }
 }
@@ -189,7 +191,12 @@ function render(): void {
     settingsKey = key;
     document.getElementById("settings")!.innerHTML = renderSettings(snapshot.settings, snapshot.cost);
   }
+  document.getElementById("update")!.innerHTML = snapshot.update
+    ? `<a class="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Update available — v${esc(snapshot.update.version)}</a>`
+    : "";
 }
+
+document.getElementById("update")!.addEventListener("click", () => window.api.openUpdate());
 
 document.getElementById("settings")!.addEventListener("change", (e) => {
   const t = e.target as HTMLInputElement;

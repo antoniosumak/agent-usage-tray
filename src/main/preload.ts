@@ -5,4 +5,5 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.on("state", (_event, snapshot) => cb(snapshot)),
   refresh: () => ipcRenderer.send("refresh"),
   setSettings: (patch: unknown) => ipcRenderer.send("set-settings", patch),
+  openUpdate: () => ipcRenderer.send("open-update"),
 });
