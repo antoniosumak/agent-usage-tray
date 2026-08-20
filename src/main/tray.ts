@@ -1,23 +1,54 @@
 import { app, BrowserWindow, Menu, nativeImage, screen, Tray } from "electron";
+import type { QuotaState } from "./quota";
 
-// Static placeholder icon: filled circle, drawn as raw BGRA (dynamic quota icon comes later).
-function createIcon(): Electron.NativeImage {
-  const size = 16;
+// Quota ring icon drawn as raw BGRA: arc fills clockwise from 12 o'clock with
+// the session-quota percentage; null percent renders an empty gray ring.
+function createIcon(percent: number | null): Electron.NativeImage {
+  const size = 32; // rendered at 2x, shown as 16 DIP
   const buf = Buffer.alloc(size * size * 4);
   const c = (size - 1) / 2;
-  const r = size / 2 - 1;
+  const rOuter = size / 2 - 1;
+  const rInner = rOuter - 6;
+  const frac = percent === null ? 0 : Math.min(Math.max(percent, 0), 100) / 100;
+  const [r, g, b] =
+    percent === null ? [156, 163, 175] : percent < 60 ? [34, 197, 94] : percent < 85 ? [234, 179, 8] : [239, 68, 68];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      if ((x - c) ** 2 + (y - c) ** 2 <= r ** 2) {
-        const i = (y * size + x) * 4;
-        buf[i] = 246; // B
-        buf[i + 1] = 130; // G
-        buf[i + 2] = 59; // R
-        buf[i + 3] = 255; // A
+      const dx = x - c;
+      const dy = y - c;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > rOuter || dist < rInner) continue;
+      let angle = Math.atan2(dx, -dy); // clockwise from 12 o'clock
+      if (angle < 0) angle += Math.PI * 2;
+      const i = (y * size + x) * 4;
+      if (angle <= frac * Math.PI * 2) {
+        buf[i] = b;
+        buf[i + 1] = g;
+        buf[i + 2] = r;
+        buf[i + 3] = 255;
+      } else {
+        buf[i] = 128;
+        buf[i + 1] = 128;
+        buf[i + 2] = 128;
+        buf[i + 3] = 96;
       }
     }
   }
-  return nativeImage.createFromBitmap(buf, { width: size, height: size });
+  return nativeImage.createFromBitmap(buf, { width: size, height: size, scaleFactor: 2 });
+}
+
+export function updateTray(tray: Tray, quota: QuotaState): void {
+  const session = quota.buckets.find((b) => b.kind === "session");
+  tray.setImage(createIcon(quota.status === "ok" && session ? session.percent : null));
+  if (quota.status === "ok" && quota.buckets.length > 0) {
+    const parts: string[] = [];
+    if (session) parts.push(`Session ${session.percent}%`);
+    const weekly = quota.buckets.find((b) => b.kind === "weekly_all");
+    if (weekly) parts.push(`Weekly ${weekly.percent}%`);
+    tray.setToolTip(parts.join(" · ") || "Agent Usage");
+  } else {
+    tray.setToolTip("Agent Usage — quota unavailable");
+  }
 }
 
 function popupPosition(trayBounds: Electron.Rectangle, win: BrowserWindow) {
@@ -30,7 +61,7 @@ function popupPosition(trayBounds: Electron.Rectangle, win: BrowserWindow) {
 }
 
 export function createTray(win: BrowserWindow): Tray {
-  const tray = new Tray(createIcon());
+  const tray = new Tray(createIcon(null));
   tray.setToolTip("Agent Usage");
   tray.setContextMenu(Menu.buildFromTemplate([{ label: "Quit", click: () => app.quit() }]));
 

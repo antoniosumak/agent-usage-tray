@@ -5,10 +5,11 @@
   "main": "dist/main.js",
   "scripts": {
     "build:main": "esbuild src/main/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js",
+    "build:preload": "esbuild src/main/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js",
     "build:renderer": "esbuild src/renderer/renderer.ts --bundle --outfile=dist/renderer.js",
     "build:css": "tailwindcss -i src/renderer/input.css -o dist/output.css --minify",
     "build:html": "node -e \"require('fs').copyFileSync('src/renderer/index.html','dist/index.html')\"",
-    "build": "npm run build:main && npm run build:renderer && npm run build:css && npm run build:html",
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer && npm run build:css && npm run build:html",
     "start": "npm run build && electron ."
   },
   "author": "",

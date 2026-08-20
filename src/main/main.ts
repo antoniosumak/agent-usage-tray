@@ -1,7 +1,7 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import * as path from "path";
-import { createTray } from "./tray";
-import { startQuota } from "./quota";
+import { createTray, updateTray } from "./tray";
+import { initialQuotaState, startQuota, QuotaState } from "./quota";
 
 const POLL_INTERVAL_MS = 5 * 60_000; // hardcoded until settings (step 5)
 
@@ -17,14 +17,25 @@ if (!app.requestSingleInstanceLock()) {
       resizable: false,
       skipTaskbar: true,
       alwaysOnTop: true,
+      webPreferences: { preload: path.join(__dirname, "preload.js") },
     });
     win.loadFile(path.join(__dirname, "index.html"));
     win.on("blur", () => win.hide());
-    createTray(win);
+    const tray = createTray(win);
 
-    startQuota(POLL_INTERVAL_MS, (s) => {
-      console.log(`quota: ${s.status}`, s.buckets.map((b) => `${b.label} ${b.percent}%`).join(", "));
+    let quota: QuotaState = initialQuotaState;
+    const push = () => {
+      win.webContents.send("state", { quota });
+      updateTray(tray, quota);
+    };
+
+    const quotaPoller = startQuota(POLL_INTERVAL_MS, (s) => {
+      quota = s;
+      push();
     });
+
+    ipcMain.on("refresh", () => quotaPoller.refreshNow());
+    win.webContents.on("did-finish-load", push);
   });
 
   // tray app: keep running with no windows visible
