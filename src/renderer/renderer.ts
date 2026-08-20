@@ -11,8 +11,24 @@ interface QuotaState {
   fetchedAt: number | null;
 }
 
+interface AgentCost {
+  client: string;
+  tokens: number;
+  cost: number;
+}
+
+interface CostState {
+  status: "ok" | "no-data" | "runtime-missing" | "error";
+  agents: AgentCost[];
+  totalTokens: number;
+  totalCost: number;
+  refreshing: boolean;
+  fetchedAt: number | null;
+}
+
 interface Snapshot {
   quota: QuotaState;
+  cost: CostState;
 }
 
 declare global {
@@ -73,9 +89,49 @@ function renderQuota(quota: QuotaState): string {
     .join("");
 }
 
+function fmtTokens(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return String(n);
+}
+
+function renderCost(cost: CostState): string {
+  if (cost.status === "runtime-missing") return statusLine("Install Bun or Node.js to see agent costs");
+  if (cost.status === "error" && !cost.fetchedAt)
+    return statusLine(cost.refreshing ? "Loading costs…" : "Cost data unavailable");
+  const header = `
+    <div class="flex justify-between mb-2">
+      <span class="font-semibold">Today</span>
+      <span class="text-xs text-neutral-500 dark:text-neutral-400">${cost.refreshing ? "refreshing…" : ""}</span>
+    </div>`;
+  if (cost.status === "no-data") return header + statusLine("No usage today");
+  const row = (label: string, tokens: number, usd: number, cls = "") => `
+    <tr class="${cls}">
+      <td class="py-0.5">${esc(label)}</td>
+      <td class="py-0.5 text-right tabular-nums">${fmtTokens(tokens)}</td>
+      <td class="py-0.5 text-right tabular-nums">$${usd.toFixed(2)}</td>
+    </tr>`;
+  return `${header}
+    <table class="w-full">
+      <thead>
+        <tr class="text-xs text-neutral-500 dark:text-neutral-400">
+          <th class="text-left font-normal">Agent</th>
+          <th class="text-right font-normal">Tokens</th>
+          <th class="text-right font-normal">Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${cost.agents.map((a) => row(a.client, a.tokens, a.cost)).join("")}
+        ${row("Total", cost.totalTokens, cost.totalCost, "font-semibold border-t border-neutral-200 dark:border-neutral-700")}
+      </tbody>
+    </table>`;
+}
+
 function render(): void {
   if (!snapshot) return;
   document.getElementById("quota")!.innerHTML = renderQuota(snapshot.quota);
+  document.getElementById("cost")!.innerHTML = renderCost(snapshot.cost);
 }
 
 window.api.onState((s) => {
