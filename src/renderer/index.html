@@ -6,12 +6,17 @@
   <title>Agent Usage</title>
   <link rel="stylesheet" href="output.css">
 </head>
-<body class="bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 text-sm select-none">
+<body class="bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 text-sm select-none overflow-y-auto">
   <div class="p-4 space-y-4">
     <div class="font-semibold">Agent Usage</div>
     <section id="quota" class="space-y-3"></section>
     <div class="border-t border-neutral-200 dark:border-neutral-700"></div>
     <section id="cost"></section>
+    <div class="border-t border-neutral-200 dark:border-neutral-700"></div>
+    <details class="text-xs">
+      <summary class="cursor-pointer text-neutral-500 dark:text-neutral-400">Settings</summary>
+      <div id="settings" class="mt-2 space-y-2"></div>
+    </details>
   </div>
   <script src="renderer.js"></script>
 </body>

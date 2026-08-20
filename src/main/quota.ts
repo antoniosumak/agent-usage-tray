@@ -149,5 +149,9 @@ export function startQuota(intervalMs: number, onState: (s: QuotaState) => void)
     refreshNow() {
       if (!polling) void poll();
     },
+    setIntervalMs(ms: number) {
+      intervalMs = ms;
+      if (!polling) schedule(ms);
+    },
   };
 }

@@ -26,9 +26,17 @@ interface CostState {
   fetchedAt: number | null;
 }
 
+interface Settings {
+  refreshMinutes: number;
+  launchAtStartup: boolean;
+  warnThresholdPct: number;
+  enabledAgents: string[] | null;
+}
+
 interface Snapshot {
   quota: QuotaState;
   cost: CostState;
+  settings: Settings;
 }
 
 declare global {
@@ -36,6 +44,7 @@ declare global {
     api: {
       onState(cb: (snapshot: Snapshot) => void): void;
       refresh(): void;
+      setSettings(patch: Partial<Settings>): void;
     };
   }
 }
@@ -61,7 +70,7 @@ function barColor(percent: number): string {
 }
 
 function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function statusLine(text: string): string {
@@ -96,7 +105,7 @@ function fmtTokens(n: number): string {
   return String(n);
 }
 
-function renderCost(cost: CostState): string {
+function renderCost(cost: CostState, settings: Settings): string {
   if (cost.status === "runtime-missing") return statusLine("Install Bun or Node.js to see agent costs");
   if (cost.status === "error" && !cost.fetchedAt)
     return statusLine(cost.refreshing ? "Loading costs…" : "Cost data unavailable");
@@ -106,6 +115,10 @@ function renderCost(cost: CostState): string {
       <span class="text-xs text-neutral-500 dark:text-neutral-400">${cost.refreshing ? "refreshing…" : ""}</span>
     </div>`;
   if (cost.status === "no-data") return header + statusLine("No usage today");
+  const agents = settings.enabledAgents
+    ? cost.agents.filter((a) => settings.enabledAgents!.includes(a.client))
+    : cost.agents;
+  if (agents.length === 0) return header + statusLine("All agents hidden in settings");
   const row = (label: string, tokens: number, usd: number, cls = "") => `
     <tr class="${cls}">
       <td class="py-0.5">${esc(label)}</td>
@@ -122,17 +135,76 @@ function renderCost(cost: CostState): string {
         </tr>
       </thead>
       <tbody>
-        ${cost.agents.map((a) => row(a.client, a.tokens, a.cost)).join("")}
-        ${row("Total", cost.totalTokens, cost.totalCost, "font-semibold border-t border-neutral-200 dark:border-neutral-700")}
+        ${agents.map((a) => row(a.client, a.tokens, a.cost)).join("")}
+        ${row(
+          "Total",
+          agents.reduce((n, a) => n + a.tokens, 0),
+          agents.reduce((n, a) => n + a.cost, 0),
+          "font-semibold border-t border-neutral-200 dark:border-neutral-700",
+        )}
       </tbody>
     </table>`;
 }
 
+const numberInput = (id: string, value: number, min: number, max: number) =>
+  `<input id="${id}" type="number" min="${min}" max="${max}" value="${value}"
+     class="w-16 px-1 py-0.5 text-right rounded border border-neutral-200 dark:border-neutral-700 bg-transparent">`;
+
+function renderSettings(settings: Settings, cost: CostState): string {
+  const enabled = (client: string) =>
+    settings.enabledAgents === null || settings.enabledAgents.includes(client);
+  const agentBoxes = cost.agents
+    .map(
+      (a) => `
+      <label class="flex items-center gap-1.5">
+        <input type="checkbox" data-agent="${esc(a.client)}" ${enabled(a.client) ? "checked" : ""}>
+        ${esc(a.client)}
+      </label>`,
+    )
+    .join("");
+  return `
+    <label class="flex items-center justify-between">
+      Refresh interval (min) ${numberInput("set-refresh", settings.refreshMinutes, 1, 120)}
+    </label>
+    <label class="flex items-center justify-between">
+      Warn at session % ${numberInput("set-threshold", settings.warnThresholdPct, 1, 100)}
+    </label>
+    <label class="flex items-center gap-1.5">
+      <input id="set-startup" type="checkbox" ${settings.launchAtStartup ? "checked" : ""}>
+      Launch at startup
+    </label>
+    ${cost.agents.length > 0 ? `<div class="text-neutral-500 dark:text-neutral-400 mt-1">Agents shown</div>${agentBoxes}` : ""}`;
+}
+
+// Settings inputs are only re-rendered when their data changes, so a state
+// push mid-typing doesn't steal focus from a number input.
+let settingsKey = "";
+
 function render(): void {
   if (!snapshot) return;
   document.getElementById("quota")!.innerHTML = renderQuota(snapshot.quota);
-  document.getElementById("cost")!.innerHTML = renderCost(snapshot.cost);
+  document.getElementById("cost")!.innerHTML = renderCost(snapshot.cost, snapshot.settings);
+  const key = JSON.stringify([snapshot.settings, snapshot.cost.agents.map((a) => a.client)]);
+  if (key !== settingsKey) {
+    settingsKey = key;
+    document.getElementById("settings")!.innerHTML = renderSettings(snapshot.settings, snapshot.cost);
+  }
 }
+
+document.getElementById("settings")!.addEventListener("change", (e) => {
+  const t = e.target as HTMLInputElement;
+  if (t.id === "set-refresh") window.api.setSettings({ refreshMinutes: Number(t.value) });
+  else if (t.id === "set-threshold") window.api.setSettings({ warnThresholdPct: Number(t.value) });
+  else if (t.id === "set-startup") window.api.setSettings({ launchAtStartup: t.checked });
+  else if (t.dataset.agent !== undefined) {
+    const boxes = [...document.querySelectorAll<HTMLInputElement>("#settings input[data-agent]")];
+    window.api.setSettings({
+      enabledAgents: boxes.every((b) => b.checked)
+        ? null
+        : boxes.filter((b) => b.checked).map((b) => b.dataset.agent!),
+    });
+  }
+});
 
 window.api.onState((s) => {
   snapshot = s;

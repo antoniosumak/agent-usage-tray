@@ -120,6 +120,12 @@ export function startCost(intervalMs: number, onState: (s: CostState) => void) {
   }
 
   void refresh();
-  setInterval(() => void refresh(), intervalMs);
-  return { refreshNow: () => void refresh() };
+  let timer = setInterval(() => void refresh(), intervalMs);
+  return {
+    refreshNow: () => void refresh(),
+    setIntervalMs(ms: number) {
+      clearInterval(timer);
+      timer = setInterval(() => void refresh(), ms);
+    },
+  };
 }

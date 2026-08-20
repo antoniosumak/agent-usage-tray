@@ -3,13 +3,16 @@ import * as path from "path";
 import { createTray, updateTray } from "./tray";
 import { initialQuotaState, startQuota, QuotaState } from "./quota";
 import { initialCostState, startCost, CostState } from "./cost";
-
-const POLL_INTERVAL_MS = 5 * 60_000; // hardcoded until settings (step 5)
+import { applyLoginItem, loadSettings, sanitizeSettings, saveSettings } from "./settings";
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.whenReady().then(() => {
+    let settings = loadSettings();
+    applyLoginItem(settings);
+    const intervalMs = () => settings.refreshMinutes * 60_000;
+
     const win = new BrowserWindow({
       width: 360,
       height: 480,
@@ -27,15 +30,15 @@ if (!app.requestSingleInstanceLock()) {
     let quota: QuotaState = initialQuotaState;
     let cost: CostState = initialCostState;
     const push = () => {
-      win.webContents.send("state", { quota, cost });
+      win.webContents.send("state", { quota, cost, settings });
       updateTray(tray, quota);
     };
 
-    const quotaPoller = startQuota(POLL_INTERVAL_MS, (s) => {
+    const quotaPoller = startQuota(intervalMs(), (s) => {
       quota = s;
       push();
     });
-    const costPoller = startCost(POLL_INTERVAL_MS, (s) => {
+    const costPoller = startCost(intervalMs(), (s) => {
       cost = s;
       push();
     });
@@ -43,6 +46,14 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.on("refresh", () => {
       quotaPoller.refreshNow();
       costPoller.refreshNow();
+    });
+    ipcMain.on("set-settings", (_event, patch) => {
+      settings = sanitizeSettings({ ...settings, ...(patch ?? {}) });
+      saveSettings(settings);
+      applyLoginItem(settings);
+      quotaPoller.setIntervalMs(intervalMs());
+      costPoller.setIntervalMs(intervalMs());
+      push();
     });
     win.webContents.on("did-finish-load", push);
   });
