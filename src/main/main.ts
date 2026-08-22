@@ -63,7 +63,7 @@ if (!app.requestSingleInstanceLock()) {
     };
 
     const push = () => {
-      const snapshot = { quota, cost, tools, heatmap, projects, blocks, burn, settings, update, range };
+      const snapshot = { quota, cost, tools, heatmap, projects, blocks, burn, settings, update, range, version: app.getVersion() };
       win.webContents.send("state", snapshot);
       widget.webContents.send("state", snapshot);
       updateTray(tray, quota);

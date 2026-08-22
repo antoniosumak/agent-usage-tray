@@ -117,6 +117,7 @@ interface Snapshot {
   settings: Settings;
   update: { version: string; status: "downloading" | "downloaded"; percent?: number } | null;
   range: Range;
+  version: string;
 }
 
 declare global {
@@ -662,7 +663,7 @@ const TOGGLE =
   "before:content-[''] before:absolute before:top-[2px] before:left-[2px] before:w-3.5 before:h-3.5 before:rounded-full " +
   "before:bg-white dark:before:bg-neutral-900 before:transition-transform checked:before:translate-x-[14px]";
 
-function renderSettings(settings: Settings, cost: CostState): string {
+function renderSettings(settings: Settings, cost: CostState, version: string): string {
   const enabled = (client: string) =>
     settings.enabledAgents === null || settings.enabledAgents.includes(client);
   const settingRow = (label: string, sub: string, control: string) => `
@@ -698,6 +699,7 @@ function renderSettings(settings: Settings, cost: CostState): string {
             </div>`
           : ""
       }
+      <div class="text-[11px] ${MUTED} text-center pt-1">Version ${esc(version)}</div>
     </div>`;
 }
 
@@ -804,10 +806,10 @@ function render(): void {
   // Merged card: hide the shared box only when both halves are empty.
   document.getElementById("activity")!.classList.toggle("hidden", blocksHtml === "" && heatmapHtml === "");
   document.getElementById("updated")!.textContent = fmtUpdated(snapshot.quota.fetchedAt);
-  const key = JSON.stringify([snapshot.settings, snapshot.cost.agents.map((a) => a.client)]);
+  const key = JSON.stringify([snapshot.settings, snapshot.cost.agents.map((a) => a.client), snapshot.version]);
   if (key !== settingsKey) {
     settingsKey = key;
-    document.getElementById("settings")!.innerHTML = renderSettings(snapshot.settings, snapshot.cost);
+    document.getElementById("settings")!.innerHTML = renderSettings(snapshot.settings, snapshot.cost, snapshot.version);
   }
   const u = snapshot.update;
   document.getElementById("update")!.innerHTML = !u
