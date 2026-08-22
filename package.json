@@ -1,6 +1,6 @@
 {
   "name": "agent-usage",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Windows tray app: live Claude quotas + cross-agent token/cost tracking",
   "main": "dist/main.js",
   "scripts": {
@@ -50,5 +50,8 @@
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

@@ -11,7 +11,7 @@ import { initialBlockState, startBlocks, BlockState } from "./blocks";
 import { initialBurnState, startBurn, etaFromSamples, BurnState } from "./burnrate";
 import { applyLoginItem, loadSettings, sanitizeSettings, saveSettings } from "./settings";
 import { checkThreshold } from "./notify";
-import { openReleasePage, startUpdates, UpdateInfo } from "./updates";
+import { installUpdate, startUpdates, UpdateInfo } from "./updates";
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -94,7 +94,7 @@ if (!app.requestSingleInstanceLock()) {
       update = u;
       push();
     });
-    ipcMain.on("open-update", openReleasePage);
+    ipcMain.on("open-update", installUpdate);
 
     const quotaPoller = startQuota(intervalMs(), (s) => {
       quota = s;
