@@ -1,6 +1,6 @@
 {
   "name": "agent-usage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Windows tray app: live Claude quotas + cross-agent token/cost tracking",
   "main": "dist/main.js",
   "scripts": {
