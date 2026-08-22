@@ -224,10 +224,17 @@ export const codexProvider: QuotaProvider = {
   async poll() {
     const auth = await readCodexAuth();
     if (!auth) return { status: "no-token", buckets: [] };
-    const res = await fetch(CODEX_USAGE_URL, {
+    // Electron's net.fetch (Chromium stack), not global fetch: the ChatGPT
+    // backend sits behind Cloudflare bot protection that 403s Node's undici TLS
+    // fingerprint. Chromium passes, same as the real Codex CLI. Lazy require so
+    // the unit tests can import the pure parse helpers without loading Electron.
+    const { net } = require("electron") as typeof import("electron");
+    const res = await net.fetch(CODEX_USAGE_URL, {
       headers: {
         Authorization: `Bearer ${auth.accessToken}`,
         "Content-Type": "application/json",
+        originator: "codex_cli_rs",
+        "User-Agent": "codex_cli_rs/0.0.0 (Windows 11) x86_64",
         ...(auth.accountId ? { "chatgpt-account-id": auth.accountId } : {}),
       },
     });
