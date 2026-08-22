@@ -1,8 +1,10 @@
 interface QuotaBucket {
+  provider: string;
   kind: string;
   label: string;
   percent: number;
   resetsAt: string | null;
+  note?: string;
 }
 
 interface QuotaState {
@@ -97,12 +99,29 @@ interface BurnState {
   fetchedAt: number | null;
 }
 
+interface SectionPref {
+  id: string;
+  visible: boolean;
+}
+
 interface Settings {
   refreshMinutes: number;
   launchAtStartup: boolean;
   warnThresholdPct: number;
   enabledAgents: string[] | null;
+  quotaProvider: string | null;
+  sections: SectionPref[];
 }
+
+// Display labels for the reorderable/hideable scroller sections.
+const SECTION_LABELS: Record<string, string> = {
+  cost: "Cost & agents",
+  burn: "Burn rate",
+  blocks: "Cost by 5-hour block",
+  heatmap: "Activity by hour",
+  tools: "Spend by tool & MCP",
+  projects: "Spend by project",
+};
 
 type Range = "today" | "7d" | "30d";
 
@@ -151,8 +170,21 @@ function countdown(resetsAt: string | null): string {
   return `${mins}m`;
 }
 
+const PROVIDER_LABEL: Record<string, string> = { anthropic: "Claude", codex: "Codex", cursor: "Cursor" };
+
+// The provider is disambiguated by the segmented control, so rows are unprefixed.
 function bucketName(b: QuotaBucket): string {
   return b.kind === "session" ? "Session" : b.kind === "weekly_all" ? "Weekly" : b.label;
+}
+
+// Selected quota provider tab. Lives in settings so the widget shows the same
+// provider; synced from each snapshot. null until first render picks the first
+// available provider.
+let quotaProvider: string | null = null;
+
+// Unique DOM key: kind alone collides once two providers both report "session".
+function bucketKey(b: QuotaBucket): string {
+  return `${b.provider}:${b.kind}`;
 }
 
 function esc(s: string): string {
@@ -182,27 +214,58 @@ function statusLine(text: string): string {
 
 const CRITICAL_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
 
-function pctHtml(pct: number, reset: string): string {
+// suffix is pre-formatted trailing detail ("resets in 3h" or "$6.67 / $1,000").
+function pctHtml(pct: number, suffix: string): string {
   const value = `${Math.round(pct)}%`;
   const core =
     pct >= 85
       ? `<span class="inline-flex items-center gap-1 text-[#d72c0d] dark:text-red-400">${CRITICAL_ICON}${value}</span>`
       : value;
-  return `${core}${reset ? ` <span class="font-normal ${MUTED}">· resets in ${reset}</span>` : ""}`;
+  return `${core}${suffix ? ` <span class="font-normal ${MUTED}">· ${suffix}</span>` : ""}`;
+}
+
+// note (credits) wins over the reset countdown; empty string means no suffix.
+function bucketSuffix(b: QuotaBucket): string {
+  if (b.note) return b.note;
+  const reset = countdown(b.resetsAt);
+  return reset ? `resets in ${reset}` : "";
+}
+
+// Providers present, primary (anthropic) first so the default tab is Claude.
+function quotaProviders(quota: QuotaState): string[] {
+  const seen = [...new Set(quota.buckets.map((b) => b.provider))];
+  return seen.sort((a, b) => (a === "anthropic" ? -1 : b === "anthropic" ? 1 : 0));
+}
+
+function providerTabs(providers: string[], sel: string): string {
+  const btn = (p: string) => {
+    const label = PROVIDER_LABEL[p] ?? p;
+    return `<button data-quota-provider="${esc(p)}" class="flex-1 flex items-center justify-center gap-1.5 py-1 rounded-md cursor-pointer transition-colors ${p === sel ? RANGE_ACTIVE : RANGE_INACTIVE}">${clientIcon(label)}${esc(label)}</button>`;
+  };
+  return `<div class="flex gap-0.5 p-0.5 rounded-lg bg-[#ebebeb] dark:bg-neutral-800 text-[11px] font-medium">${providers.map(btn).join("")}</div>`;
 }
 
 function renderQuota(quota: QuotaState): string {
-  const header = `<div class="${LABEL}">Claude quota</div>`;
-  if (quota.status === "no-token" || quota.status === "relogin") return header + statusLine("Sign in via Claude Code");
-  if (quota.status === "unavailable" || quota.buckets.length === 0) return header + statusLine("Quota unavailable");
+  const header = `<div class="${LABEL}">Quota</div>`;
+  // Render whatever buckets exist regardless of the primary status, so a
+  // secondary provider still shows when Claude has no token.
+  if (quota.buckets.length === 0) {
+    const msg = quota.status === "no-token" || quota.status === "relogin" ? "Sign in via Claude Code" : "Quota unavailable";
+    return header + statusLine(msg);
+  }
+  const providers = quotaProviders(quota);
+  const sel = quotaProvider && providers.includes(quotaProvider) ? quotaProvider : providers[0];
+  quotaProvider = sel;
+  const tabs = providers.length > 1 ? providerTabs(providers, sel) : "";
   const rows = quota.buckets
+    .filter((b) => b.provider === sel)
     .map((b) => {
       const pct = Math.min(Math.max(b.percent, 0), 100);
       return `
-        <div class="space-y-1.5" data-bucket="${esc(b.kind)}" title="${esc(b.label)}">
+        <div class="space-y-1.5" data-bucket="${esc(bucketKey(b))}" title="${esc(b.label)}">
           <div class="flex items-baseline justify-between">
             <span class="text-xs">${esc(bucketName(b))}</span>
-            <span class="text-xs font-semibold tabular-nums select-text cursor-text" data-pct>${pctHtml(pct, countdown(b.resetsAt))}</span>
+            <span class="text-xs font-semibold tabular-nums select-text cursor-text" data-pct>${pctHtml(pct, bucketSuffix(b))}</span>
           </div>
           <div class="h-1.5 rounded-full bg-[#ebebeb] dark:bg-neutral-800 overflow-hidden" role="progressbar" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(bucketName(b))}">
             <div class="${QUOTA_FILL}" data-fill style="width:${pct}%"></div>
@@ -210,15 +273,15 @@ function renderQuota(quota: QuotaState): string {
         </div>`;
     })
     .join("");
-  return header + rows;
+  return header + tabs + rows;
 }
 
 function updateQuota(el: HTMLElement, quota: QuotaState): void {
   for (const b of quota.buckets) {
-    const row = el.querySelector<HTMLElement>(`[data-bucket="${CSS.escape(b.kind)}"]`);
+    const row = el.querySelector<HTMLElement>(`[data-bucket="${CSS.escape(bucketKey(b))}"]`);
     if (!row) continue;
     const pct = Math.min(Math.max(b.percent, 0), 100);
-    row.querySelector<HTMLElement>("[data-pct]")!.innerHTML = pctHtml(pct, countdown(b.resetsAt));
+    row.querySelector<HTMLElement>("[data-pct]")!.innerHTML = pctHtml(pct, bucketSuffix(b));
     const fill = row.querySelector<HTMLElement>("[data-fill]")!;
     fill.className = QUOTA_FILL;
     fill.style.width = `${pct}%`;
@@ -657,6 +720,18 @@ const numberInput = (id: string, value: number, min: number, max: number, unit: 
     <span class="text-[11px] ${MUTED}">${unit}</span>
   </span>`;
 
+// Mirror of REFRESH_CHOICES in src/main/settings.ts (renderer can't import main).
+// A closed set instead of a free number input so the quota API can't be polled
+// aggressively enough to hit rate limits.
+const REFRESH_CHOICES = [5, 10, 15, 30, 60];
+const refreshSelect = (value: number) => `
+  <span class="relative flex items-center border border-[#d4d4d4] dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900 focus-within:border-[#005bd3] focus-within:ring-2 focus-within:ring-[#005bd3]/25 dark:focus-within:border-blue-400 dark:focus-within:ring-blue-400/25">
+    <select id="set-refresh" class="appearance-none bg-transparent outline-none text-xs tabular-nums cursor-pointer pl-2 pr-6 py-1 text-[#1a1a1a] dark:text-neutral-100">
+      ${REFRESH_CHOICES.map((m) => `<option value="${m}" ${m === value ? "selected" : ""} class="bg-white text-[#1a1a1a] dark:bg-neutral-900 dark:text-neutral-100">${m} min</option>`).join("")}
+    </select>
+    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="absolute right-2 ${MUTED} pointer-events-none"><path d="M4 6 L8 10 L12 6"/></svg>
+  </span>`;
+
 const TOGGLE =
   "appearance-none cursor-pointer relative w-8 h-[18px] rounded-full bg-neutral-300 dark:bg-neutral-700 " +
   "checked:bg-[#1a1a1a] dark:checked:bg-neutral-100 transition-colors " +
@@ -684,12 +759,37 @@ function renderSettings(settings: Settings, cost: CostState, version: string): s
       </label>`,
     )
     .join("");
+  const arrow = (up: boolean) =>
+    `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${up ? '<path d="M4 10 L8 6 L12 10"/>' : '<path d="M4 6 L8 10 L12 6"/>'}</svg>`;
+  const moveBtn = (id: string, name: string, dir: -1 | 1, disabled: boolean) =>
+    `<button data-move="${id}" data-dir="${dir}" ${disabled ? "disabled" : ""} aria-label="Move ${name} ${dir < 0 ? "up" : "down"}"
+      class="p-1.5 rounded-md text-[#616161] dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer disabled:opacity-30 disabled:cursor-default active:scale-[0.96] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005bd3]/40 dark:focus-visible:ring-blue-400/40">${arrow(dir < 0)}</button>`;
+  const sectionRows = settings.sections
+    .map((s, i) => {
+      // esc() output is safe both as HTML text and inside the aria-label attr.
+      const name = esc(SECTION_LABELS[s.id] ?? s.id);
+      return `
+      <div class="${ROW}">
+        <span class="flex items-center gap-1">
+          ${moveBtn(s.id, name, -1, i === 0)}
+          ${moveBtn(s.id, name, 1, i === settings.sections.length - 1)}
+          <label for="sec-${esc(s.id)}" class="text-xs ml-1 cursor-pointer">${name}</label>
+        </span>
+        <input id="sec-${esc(s.id)}" type="checkbox" data-section-toggle="${esc(s.id)}" ${s.visible ? "checked" : ""}
+          class="w-4 h-4 accent-[#1a1a1a] dark:accent-neutral-100 cursor-pointer">
+      </div>`;
+    })
+    .join("");
   return `
     <div class="space-y-2">
       <div class="${CARD} ${DIVIDE}">
-        ${settingRow("Refresh interval", "How often quota is polled", numberInput("set-refresh", settings.refreshMinutes, 1, 120, "min"))}
+        ${settingRow("Refresh interval", "How often quota is polled", refreshSelect(settings.refreshMinutes))}
         ${settingRow("Warn at session usage", "Notifies once per quota window", numberInput("set-threshold", settings.warnThresholdPct, 1, 100, "%"))}
         ${settingRow("Launch at startup", "", `<input id="set-startup" type="checkbox" ${settings.launchAtStartup ? "checked" : ""} class="${TOGGLE}">`)}
+      </div>
+      <div class="${CARD}">
+        <div class="${LABEL} px-3.5 pt-3 pb-1">Sections</div>
+        <div class="${DIVIDE}">${sectionRows}</div>
       </div>
       ${
         cost.agents.length > 0
@@ -726,8 +826,9 @@ let blocksKey = "";
 
 function render(): void {
   if (!snapshot) return;
+  quotaProvider = snapshot.settings.quotaProvider ?? quotaProvider;
   const quotaEl = document.getElementById("quota")!;
-  const qk = JSON.stringify([snapshot.quota.status, snapshot.quota.buckets.map((b) => [b.kind, b.label])]);
+  const qk = JSON.stringify([quotaProvider, snapshot.quota.status, snapshot.quota.buckets.map((b) => [b.provider, b.kind, b.label])]);
   if (qk !== quotaKey) {
     quotaKey = qk;
     quotaEl.innerHTML = renderQuota(snapshot.quota);
@@ -803,8 +904,7 @@ function render(): void {
     blocksKey = blk;
     blocksEl.innerHTML = blocksHtml;
   } else updateBlocks(blocksEl, snapshot.blocks);
-  // Merged card: hide the shared box only when both halves are empty.
-  document.getElementById("activity")!.classList.toggle("hidden", blocksHtml === "" && heatmapHtml === "");
+  applySections(snapshot.settings.sections);
   document.getElementById("updated")!.textContent = fmtUpdated(snapshot.quota.fetchedAt);
   const key = JSON.stringify([snapshot.settings, snapshot.cost.agents.map((a) => a.client), snapshot.version]);
   if (key !== settingsKey) {
@@ -820,16 +920,32 @@ function render(): void {
   updateScrollFades();
 }
 
+// Reorder the scroller sections to match settings and hide the ones the user
+// turned off. Only ever *adds* .hidden — the per-section empty-content toggles
+// above own showing, so an empty-but-enabled section stays hidden.
+function applySections(sections: SectionPref[]): void {
+  const scroller = document.getElementById("scroller")!;
+  for (const { id, visible } of sections) {
+    const el = document.querySelector<HTMLElement>(`#scroller [data-section="${id}"]`);
+    if (!el) continue;
+    scroller.appendChild(el); // re-append in settings order
+    if (!visible) el.classList.add("hidden");
+  }
+}
+
 // Scrollbar is hidden (it stole width); fade the clipped edge instead so
 // "more below/above" stays visible. Fades only appear when actually overflowing.
-function updateScrollFades(): void {
-  const el = document.getElementById("scroller");
-  if (!el) return;
+function scrollFade(el: HTMLElement): void {
   const top = el.scrollTop > 2;
   const bot = el.scrollTop + el.clientHeight < el.scrollHeight - 2;
   const mask = `linear-gradient(to bottom, ${top ? "transparent" : "#000"} 0, #000 14px, #000 calc(100% - 14px), ${bot ? "transparent" : "#000"} 100%)`;
   el.style.maskImage = mask;
   el.style.webkitMaskImage = mask;
+}
+
+// Main scroller + settings scroller both carry data-scroll-fade.
+function updateScrollFades(): void {
+  document.querySelectorAll<HTMLElement>("[data-scroll-fade]").forEach(scrollFade);
 }
 
 const RANGE_ACTIVE = "bg-white dark:bg-neutral-900 text-[#1a1a1a] dark:text-neutral-100 shadow-sm";
@@ -865,16 +981,26 @@ function showSettings(open: boolean): void {
   const s = document.getElementById("view-settings")!;
   s.classList.toggle("hidden", !open);
   s.classList.toggle("flex", open);
+  if (open) updateScrollFades(); // height is 0 while hidden — mask is only real once shown
 }
+
+// Quota provider tabs (delegated: the section's innerHTML is re-rendered).
+document.getElementById("quota")!.addEventListener("click", (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-quota-provider]");
+  if (!b || b.dataset.quotaProvider === quotaProvider) return;
+  quotaProvider = b.dataset.quotaProvider!;
+  window.api.setSettings({ quotaProvider }); // shared with the widget
+  render();
+});
 
 document.getElementById("open-settings")!.addEventListener("click", () => showSettings(true));
 document.getElementById("close-settings")!.addEventListener("click", () => showSettings(false));
 document.getElementById("refresh")!.addEventListener("click", () => window.api.refresh());
 
-const scroller = document.getElementById("scroller")!;
-scroller.addEventListener("scroll", updateScrollFades, { passive: true });
+for (const el of document.querySelectorAll<HTMLElement>("[data-scroll-fade]"))
+  el.addEventListener("scroll", () => scrollFade(el), { passive: true });
 // <details> collapse changes content height; toggle doesn't bubble, so capture it.
-scroller.addEventListener("toggle", updateScrollFades, true);
+document.getElementById("scroller")!.addEventListener("toggle", updateScrollFades, true);
 document.getElementById("update")!.addEventListener("click", () => window.api.openUpdate());
 
 document.getElementById("settings")!.addEventListener("change", (e) => {
@@ -889,7 +1015,24 @@ document.getElementById("settings")!.addEventListener("change", (e) => {
         ? null
         : boxes.filter((b) => b.checked).map((b) => b.dataset.agent!),
     });
+  } else if (t.dataset.sectionToggle !== undefined && snapshot) {
+    const sections = snapshot.settings.sections.map((s) =>
+      s.id === t.dataset.sectionToggle ? { ...s, visible: t.checked } : s,
+    );
+    window.api.setSettings({ sections });
   }
+});
+
+// Reorder buttons: swap the section with its neighbour in the given direction.
+document.getElementById("settings")!.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-move]");
+  if (!btn || !snapshot) return;
+  const sections = [...snapshot.settings.sections];
+  const i = sections.findIndex((s) => s.id === btn.dataset.move);
+  const j = i + Number(btn.dataset.dir);
+  if (i < 0 || j < 0 || j >= sections.length) return;
+  [sections[i], sections[j]] = [sections[j], sections[i]];
+  window.api.setSettings({ sections });
 });
 
 window.api.onState((s) => {

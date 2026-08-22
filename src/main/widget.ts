@@ -2,7 +2,7 @@ import { execFile, spawn } from "node:child_process";
 import { app, BrowserWindow, screen } from "electron";
 import * as path from "path";
 
-const W = 190;
+const W = 212;
 const H = 40;
 
 // C# P/Invoke helper run via PowerShell: reparents the widget HWND into
@@ -131,6 +131,39 @@ export function watchWidgetClicks(
   app.on("will-quit", () => child.kill());
 }
 
+// Windows records taskbar-pin state in HKCU\...\NotifyIconSettings (IsPromoted).
+// Moving an icon into/out of the toolbar rewrites it, which also resizes the
+// tray cluster. RegNotifyChangeKeyValue blocks until the key changes, so a
+// persistent helper emits a line per change and main re-anchors — no polling.
+const WATCH_CS = `
+using System;
+using System.Runtime.InteropServices;
+public static class RW {
+  [DllImport("advapi32.dll")] static extern int RegOpenKeyEx(IntPtr root, string sub, int opt, int sam, out IntPtr key);
+  [DllImport("advapi32.dll")] static extern int RegNotifyChangeKeyValue(IntPtr key, bool sub, int filter, IntPtr evt, bool async);
+  public static void Run() {
+    IntPtr key;
+    if (RegOpenKeyEx(new IntPtr(unchecked((int)0x80000001)), "Control Panel\\\\NotifyIconSettings", 0, 0x20019, out key) != 0) return;
+    while (RegNotifyChangeKeyValue(key, true, 4, IntPtr.Zero, false) == 0) Console.WriteLine("changed"); // 4 = LAST_SET
+  }
+}
+`;
+
+function watchTrayLayout(widget: BrowserWindow): void {
+  const script = `Add-Type @'${WATCH_CS}'@; [RW]::Run()`;
+  const child = spawn("powershell", ["-NoProfile", "-NonInteractive", "-Command", script], {
+    windowsHide: true,
+  });
+  child.stdout.on("data", () => {
+    if (widget.isDestroyed()) return;
+    // Registry write lands before the taskbar relayouts; let it settle so embed
+    // reads the new tray-cluster rect.
+    setTimeout(() => !widget.isDestroyed() && embed(widget), 200);
+  });
+  child.on("error", () => {}); // ponytail: no powershell → 30s poll below still re-anchors
+  app.on("will-quit", () => child.kill());
+}
+
 export function createWidget(): BrowserWindow {
   const widget = new BrowserWindow({
     width: W,
@@ -151,8 +184,9 @@ export function createWidget(): BrowserWindow {
     widget.showInactive();
     embed(widget);
   });
-  // Tray cluster width changes as icons come and go; re-anchor periodically.
+  // Re-anchor the instant an icon is pinned/unpinned; 30s poll is the backstop.
   // Re-embedding is idempotent (SetParent to same parent is a no-op).
+  watchTrayLayout(widget);
   setInterval(() => embed(widget), 30_000);
   screen.on("display-metrics-changed", () => embed(widget));
   return widget;

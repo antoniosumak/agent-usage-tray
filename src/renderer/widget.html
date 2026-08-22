@@ -7,24 +7,33 @@
     html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
     #root {
       box-sizing: border-box; height: 100%; padding: 6px 9px;
-      display: flex; flex-direction: column; justify-content: center; gap: 5px;
+      display: flex; flex-direction: row; align-items: center; gap: 7px;
       background: rgba(32, 32, 34, 0.92);
       border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
       font: 600 9px "Segoe UI Variable Text", "Segoe UI", sans-serif; color: #e8e8ea;
       -webkit-user-select: none;
     }
+    /* Which provider these bars belong to (Claude/Codex), driven by the Quota tab. */
+    #provider { display: flex; align-items: center; justify-content: center; width: 16px; flex: none; }
+    #provider svg { width: 16px; height: 16px; display: block; }
+    #bars { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 5px; }
     .row { display: flex; align-items: center; gap: 6px; }
     .label { width: 14px; color: #b4b4b8; }
     .track { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.13); overflow: hidden; }
-    .fill { height: 100%; border-radius: 4px; background: #9a9a9e; width: 0%; transition: width 0.4s ease; }
+    /* Surface is always dark, so the fill uses the dark-theme blue regardless of system theme. */
+    .fill { height: 100%; border-radius: 4px; background: #3b82f6; width: 0%; transition: width 0.4s cubic-bezier(0.2, 0, 0, 1); }
     .pct { width: 26px; text-align: right; font-variant-numeric: tabular-nums; }
     .reset { width: 30px; text-align: right; color: #8a8a8e; font-variant-numeric: tabular-nums; }
+    @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
 </style>
 </head>
 <body>
   <div id="root">
-    <div class="row"><span class="label">5h</span><div class="track"><div class="fill" id="fill-session"></div></div><span class="pct" id="pct-session">–</span><span class="reset" id="reset-session"></span></div>
-    <div class="row"><span class="label">7d</span><div class="track"><div class="fill" id="fill-weekly_all"></div></div><span class="pct" id="pct-weekly_all">–</span><span class="reset" id="reset-weekly_all"></span></div>
+    <div id="provider" title=""></div>
+    <div id="bars">
+      <div class="row"><span class="label">5h</span><div class="track" id="track-session" role="progressbar" aria-label="5-hour session usage" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill-session"></div></div><span class="pct" id="pct-session">–</span><span class="reset" id="reset-session"></span></div>
+      <div class="row"><span class="label">7d</span><div class="track" id="track-weekly_all" role="progressbar" aria-label="7-day usage" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill-weekly_all"></div></div><span class="pct" id="pct-weekly_all">–</span><span class="reset" id="reset-weekly_all"></span></div>
+    </div>
   </div>
   <script src="widget.js"></script>
 </body>

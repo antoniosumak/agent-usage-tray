@@ -12,6 +12,7 @@ import { initialBurnState, startBurn, etaFromSamples, BurnState } from "./burnra
 import { applyLoginItem, loadSettings, sanitizeSettings, saveSettings } from "./settings";
 import { checkThreshold } from "./notify";
 import { installUpdate, startUpdates, UpdateInfo } from "./updates";
+import { fakeState } from "./fake";
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -24,7 +25,7 @@ if (!app.requestSingleInstanceLock()) {
 
     const win = new BrowserWindow({
       width: 360,
-      height: 480,
+      height: 560,
       show: false,
       frame: false,
       resizable: false,
@@ -89,6 +90,34 @@ if (!app.requestSingleInstanceLock()) {
           window: win,
         });
     });
+
+    // AGENT_USAGE_FAKE=1: skip all pollers, feed canned state and tick the
+    // session % through the color thresholds so the tray/widget visibly change.
+    if (process.env.AGENT_USAGE_FAKE) {
+      let tick = 0;
+      const applyFake = () => {
+        const f = fakeState(tick++);
+        ({ quota, cost, tools, heatmap, projects, blocks, burn } = f);
+        checkThreshold(quota, settings.warnThresholdPct);
+        push();
+      };
+      applyFake();
+      const fakeTimer = setInterval(applyFake, 3_000);
+      app.on("will-quit", () => clearInterval(fakeTimer));
+      ipcMain.on("refresh", applyFake);
+      ipcMain.on("set-range", (_e, r: Range) => {
+        if (r === "today" || r === "7d" || r === "30d") range = r;
+        push();
+      });
+      ipcMain.on("set-settings", (_e, patch) => {
+        settings = sanitizeSettings({ ...settings, ...(patch ?? {}) });
+        saveSettings(settings);
+        push();
+      });
+      win.webContents.on("did-finish-load", push);
+      widget.webContents.on("did-finish-load", push);
+      return;
+    }
 
     startUpdates((u) => {
       update = u;

@@ -33,15 +33,13 @@
       <button data-range="30d" class="flex-1 py-1 rounded-md cursor-pointer transition-colors">30 days</button>
     </div>
 
-    <div id="scroller" class="flex-1 min-h-0 overflow-y-auto space-y-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <section id="cost" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-3"></section>
-      <section id="burn" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
-      <section id="activity" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2">
-        <div id="blocks" class="space-y-2"></div>
-        <div id="heatmap" class="space-y-2"></div>
-      </section>
-      <section id="tools" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
-      <section id="projects" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
+    <div id="scroller" data-scroll-fade class="flex-1 min-h-0 overflow-y-auto space-y-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <section id="cost" data-section="cost" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-3"></section>
+      <section id="burn" data-section="burn" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
+      <section id="blocks" data-section="blocks" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
+      <section id="heatmap" data-section="heatmap" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
+      <section id="tools" data-section="tools" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
+      <section id="projects" data-section="projects" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
     </div>
 
     <div class="flex items-center justify-between px-1">
@@ -54,12 +52,14 @@
   </div>
 
   <!-- Settings view -->
-  <div id="view-settings" class="hidden h-screen flex-col gap-2 p-3 overflow-y-auto">
+  <div id="view-settings" class="hidden h-screen flex-col gap-2 p-3">
     <button id="close-settings" aria-label="Back to overview" class="flex items-center gap-2 px-1.5 py-1.5 -mx-1.5 -my-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer self-start active:scale-[0.96] transition-transform">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="stroke-[#616161] dark:stroke-neutral-400"><path d="M10 3 L5 8 L10 13"/></svg>
       <span class="text-[13px] font-semibold">Settings</span>
     </button>
-    <div id="settings"></div>
+    <div id="settings-scroller" data-scroll-fade class="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div id="settings"></div>
+    </div>
   </div>
 
   <script src="renderer.js"></script>
