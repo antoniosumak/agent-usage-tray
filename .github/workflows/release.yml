@@ -20,3 +20,8 @@ jobs:
       - run: npx electron-builder --win nsis --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # electron-builder uploads to a draft (reliable for the large installer);
+      # flip it live only after every asset has finished uploading.
+      - run: gh release edit ${{ github.ref_name }} --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

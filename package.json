@@ -37,8 +37,7 @@
     "publish": {
       "provider": "github",
       "owner": "antoniosumak",
-      "repo": "agent-usage-tray",
-      "releaseType": "release"
+      "repo": "agent-usage-tray"
     }
   },
   "author": "",
