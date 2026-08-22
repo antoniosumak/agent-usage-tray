@@ -1,27 +1,87 @@
+import { execFile } from "node:child_process";
 import { app, BrowserWindow, Menu, nativeImage, screen, Tray } from "electron";
 import type { QuotaState } from "./quota";
 
-// Quota ring icon drawn as raw BGRA: arc fills clockwise from 12 o'clock with
-// the session-quota percentage; null percent renders an empty gray ring.
-function createIcon(percent: number | null): Electron.NativeImage {
+// Tray icon drawn as raw BGRA. Pinned to taskbar: session percentage as big
+// color-coded digits above a thin weekly bar. In the overflow flyout: session
+// percentage as white digits on a solid threshold-colored badge. Null renders
+// gray.
+function barColor(percent: number): [number, number, number] {
+  return percent < 60 ? [34, 197, 94] : percent < 85 ? [234, 179, 8] : [239, 68, 68];
+}
+
+// 3x5 pixel font, one 3-bit value per row, bit 2 = leftmost pixel.
+const FONT: Record<string, number[]> = {
+  "0": [7, 5, 5, 5, 7],
+  "1": [2, 6, 2, 2, 7],
+  "2": [7, 1, 7, 4, 7],
+  "3": [7, 1, 7, 1, 7],
+  "4": [5, 5, 7, 1, 1],
+  "5": [7, 4, 7, 1, 7],
+  "6": [7, 4, 7, 5, 7],
+  "7": [7, 1, 2, 2, 2],
+  "8": [7, 5, 7, 5, 7],
+  "9": [7, 5, 7, 1, 7],
+  "-": [0, 0, 7, 0, 0],
+};
+
+function toImage(buf: Buffer, size: number): Electron.NativeImage {
+  return nativeImage.createFromBitmap(buf, { width: size, height: size, scaleFactor: 2 });
+}
+
+// Blit `text` in the 3x5 FONT, horizontally centered at row y0, scaled up and
+// tinted [r, g, b]. Writes opaque pixels only where a glyph bit is set.
+function drawText(
+  buf: Buffer,
+  size: number,
+  text: string,
+  scale: number,
+  y0: number,
+  [r, g, b]: [number, number, number],
+): void {
+  const textW = text.length * 3 * scale + (text.length - 1) * scale;
+  let x0 = Math.round((size - textW) / 2);
+  for (const ch of text) {
+    const glyph = FONT[ch];
+    for (let gy = 0; gy < 5; gy++) {
+      for (let gx = 0; gx < 3; gx++) {
+        if (!(glyph[gy] & (4 >> gx))) continue;
+        for (let dy = 0; dy < scale; dy++) {
+          for (let dx = 0; dx < scale; dx++) {
+            const i = ((y0 + gy * scale + dy) * size + x0 + gx * scale + dx) * 4;
+            buf[i] = b;
+            buf[i + 1] = g;
+            buf[i + 2] = r;
+            buf[i + 3] = 255;
+          }
+        }
+      }
+    }
+    x0 += 4 * scale;
+  }
+}
+
+function createBarsIcon(sessionPct: number | null, weeklyPct: number | null): Electron.NativeImage {
   const size = 32; // rendered at 2x, shown as 16 DIP
   const buf = Buffer.alloc(size * size * 4);
-  const c = (size - 1) / 2;
-  const rOuter = size / 2 - 1;
-  const rInner = rOuter - 6;
-  const frac = percent === null ? 0 : Math.min(Math.max(percent, 0), 100) / 100;
-  const [r, g, b] =
-    percent === null ? [156, 163, 175] : percent < 60 ? [34, 197, 94] : percent < 85 ? [234, 179, 8] : [239, 68, 68];
-  for (let y = 0; y < size; y++) {
+
+  // Session % as big color-coded digits filling the top; scale 4 gives a 20px
+  // tall glyph, legible at 16 DIP. ponytail: two digits max — 100% shows as 99.
+  const text =
+    sessionPct === null ? "--" : String(Math.min(Math.max(Math.round(sessionPct), 0), 99));
+  const digitColor = sessionPct === null ? [156, 163, 175] : barColor(sessionPct);
+  drawText(buf, size, text, 4, 3, digitColor as [number, number, number]);
+
+  // Weekly usage as a thin bar along the bottom, color-coded and filled to %.
+  const barTop = 27;
+  const barH = 4;
+  const frac = weeklyPct === null ? 0 : Math.min(Math.max(weeklyPct, 0), 100) / 100;
+  const fillW = Math.round(frac * size);
+  const [r, g, b] = weeklyPct === null ? [156, 163, 175] : barColor(weeklyPct);
+  for (let y = barTop; y < barTop + barH; y++) {
     for (let x = 0; x < size; x++) {
-      const dx = x - c;
-      const dy = y - c;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > rOuter || dist < rInner) continue;
-      let angle = Math.atan2(dx, -dy); // clockwise from 12 o'clock
-      if (angle < 0) angle += Math.PI * 2;
       const i = (y * size + x) * 4;
-      if (angle <= frac * Math.PI * 2) {
+      if (x < fillW) {
         buf[i] = b;
         buf[i + 1] = g;
         buf[i + 2] = r;
@@ -34,16 +94,59 @@ function createIcon(percent: number | null): Electron.NativeImage {
       }
     }
   }
-  return nativeImage.createFromBitmap(buf, { width: size, height: size, scaleFactor: 2 });
+  return toImage(buf, size);
+}
+
+function createBadgeIcon(sessionPct: number | null): Electron.NativeImage {
+  const size = 32; // rendered at 2x, shown as 16 DIP
+  const buf = Buffer.alloc(size * size * 4);
+  const [r, g, b] = sessionPct === null ? [156, 163, 175] : barColor(sessionPct);
+  for (let i = 0; i < size * size; i++) {
+    buf[i * 4] = b;
+    buf[i * 4 + 1] = g;
+    buf[i * 4 + 2] = r;
+    buf[i * 4 + 3] = 255;
+  }
+  // ponytail: two digits max — 100% shows as 99, close enough for a 16px badge
+  const text =
+    sessionPct === null ? "--" : String(Math.min(Math.max(Math.round(sessionPct), 0), 99));
+  const scale = 4;
+  drawText(buf, size, text, scale, Math.round((size - 5 * scale) / 2), [255, 255, 255]);
+  return toImage(buf, size);
+}
+
+// Windows 11 records per-icon pin state in the registry; there is no Electron
+// API for it. IsPromoted=1 means the icon sits on the taskbar; absent or 0
+// means it lives in the "Show hidden icons" flyout.
+function isPinned(): Promise<boolean> {
+  return new Promise((resolve) => {
+    execFile(
+      "reg",
+      ["query", "HKCU\\Control Panel\\NotifyIconSettings", "/s"],
+      { windowsHide: true },
+      (err, out) => {
+        if (err) return resolve(false);
+        const exe = process.execPath.toLowerCase();
+        const block = out.split(/\r?\n\r?\n/).find((blk) => blk.toLowerCase().includes(exe));
+        resolve(!!block && /IsPromoted\s+REG_DWORD\s+0x1/i.test(block));
+      },
+    );
+  });
 }
 
 export function updateTray(tray: Tray, quota: QuotaState): void {
   const session = quota.buckets.find((b) => b.kind === "session");
-  tray.setImage(createIcon(quota.status === "ok" && session ? session.percent : null));
+  const weekly = quota.buckets.find((b) => b.kind === "weekly_all");
+  const ok = quota.status === "ok";
+  const sessionPct = ok && session ? session.percent : null;
+  const weeklyPct = ok && weekly ? weekly.percent : null;
+  void isPinned().then((pinned) => {
+    if (tray.isDestroyed()) return;
+    tray.setImage(pinned ? createBarsIcon(sessionPct, weeklyPct) : createBadgeIcon(sessionPct));
+  });
   if (quota.status === "ok" && quota.buckets.length > 0) {
     const parts: string[] = [];
     if (session) parts.push(`Session ${session.percent}%`);
-    const weekly = quota.buckets.find((b) => b.kind === "weekly_all");
     if (weekly) parts.push(`Weekly ${weekly.percent}%`);
     tray.setToolTip(parts.join(" · ") || "Agent Usage");
   } else {
@@ -51,7 +154,7 @@ export function updateTray(tray: Tray, quota: QuotaState): void {
   }
 }
 
-function popupPosition(trayBounds: Electron.Rectangle, win: BrowserWindow) {
+export function popupPosition(trayBounds: Electron.Rectangle, win: BrowserWindow) {
   const { width, height } = win.getBounds();
   const wa = screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y }).workArea;
   let x = Math.round(trayBounds.x + trayBounds.width / 2 - width / 2);
@@ -61,7 +164,7 @@ function popupPosition(trayBounds: Electron.Rectangle, win: BrowserWindow) {
 }
 
 export function createTray(win: BrowserWindow): Tray {
-  const tray = new Tray(createIcon(null));
+  const tray = new Tray(createBadgeIcon(null));
   tray.setToolTip("Agent Usage");
   tray.setContextMenu(Menu.buildFromTemplate([{ label: "Quit", click: () => app.quit() }]));
 

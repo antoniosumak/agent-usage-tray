@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'">
+  <style>
+    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+    #root {
+      box-sizing: border-box; height: 100%; padding: 6px 9px;
+      display: flex; flex-direction: column; justify-content: center; gap: 5px;
+      background: rgba(32, 32, 34, 0.92);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+      font: 600 9px "Segoe UI Variable Text", "Segoe UI", sans-serif; color: #e8e8ea;
+      -webkit-user-select: none;
+    }
+    .row { display: flex; align-items: center; gap: 6px; }
+    .label { width: 14px; color: #b4b4b8; }
+    .track { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.13); overflow: hidden; }
+    .fill { height: 100%; border-radius: 4px; background: #9a9a9e; width: 0%; transition: width 0.4s ease; }
+    .pct { width: 26px; text-align: right; font-variant-numeric: tabular-nums; }
+    .reset { width: 30px; text-align: right; color: #8a8a8e; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+  <div id="root">
+    <div class="row"><span class="label">5h</span><div class="track"><div class="fill" id="fill-session"></div></div><span class="pct" id="pct-session">–</span><span class="reset" id="reset-session"></span></div>
+    <div class="row"><span class="label">7d</span><div class="track"><div class="fill" id="fill-weekly_all"></div></div><span class="pct" id="pct-weekly_all">–</span><span class="reset" id="reset-weekly_all"></span></div>
+  </div>
+  <script src="widget.js"></script>
+</body>
+</html>

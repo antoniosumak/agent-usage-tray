@@ -2,23 +2,66 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
   <title>Agent Usage</title>
   <link rel="stylesheet" href="output.css">
 </head>
-<body class="bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 text-sm select-none overflow-y-auto">
-  <div class="p-4 space-y-4">
-    <div class="font-semibold">Agent Usage</div>
-    <section id="quota" class="space-y-3"></section>
-    <div class="border-t border-neutral-200 dark:border-neutral-700"></div>
-    <section id="cost"></section>
-    <div class="border-t border-neutral-200 dark:border-neutral-700"></div>
-    <details class="text-xs">
-      <summary class="cursor-pointer text-neutral-500 dark:text-neutral-400">Settings</summary>
-      <div id="settings" class="mt-2 space-y-2"></div>
-    </details>
-    <div id="update"></div>
+<body class="bg-[#f1f1f1] text-[#1a1a1a] dark:bg-neutral-950 dark:text-neutral-100 text-sm select-none overflow-hidden antialiased">
+
+  <!-- Main view -->
+  <div id="view-main" class="h-screen flex flex-col gap-2 p-3">
+    <div class="flex items-center justify-between px-1">
+      <div class="flex items-center gap-2">
+        <div class="w-[22px] h-[22px] rounded-md bg-[#1a1a1a] dark:bg-neutral-100 flex items-center justify-center">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" class="stroke-white dark:stroke-neutral-900"><path d="M2 13 L6 6 L9 10 L14 3"/></svg>
+        </div>
+        <span class="text-[13px] font-semibold">Agent Usage</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span id="updated" class="text-[11px] tabular-nums text-[#6f6f6f] dark:text-neutral-400 select-text cursor-text"></span>
+        <button id="refresh" aria-label="Refresh" class="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer active:scale-[0.96] transition-transform">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="stroke-[#616161] dark:stroke-neutral-400"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5 v2.5 h-2.5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <section id="quota" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-3"></section>
+
+    <div id="range" class="flex gap-0.5 p-0.5 rounded-lg bg-[#ebebeb] dark:bg-neutral-800 text-[11px] font-medium">
+      <button data-range="today" class="flex-1 py-1 rounded-md cursor-pointer transition-colors">Today</button>
+      <button data-range="7d" class="flex-1 py-1 rounded-md cursor-pointer transition-colors">7 days</button>
+      <button data-range="30d" class="flex-1 py-1 rounded-md cursor-pointer transition-colors">30 days</button>
+    </div>
+
+    <div id="scroller" class="flex-1 min-h-0 overflow-y-auto space-y-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <section id="cost" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-3"></section>
+      <section id="burn" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
+      <section id="activity" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2">
+        <div id="blocks" class="space-y-2"></div>
+        <div id="heatmap" class="space-y-2"></div>
+      </section>
+      <section id="tools" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
+      <section id="projects" class="bg-white dark:bg-neutral-900 border border-[#e3e3e3] dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(26,26,26,0.05)] p-3.5 space-y-2"></section>
+    </div>
+
+    <div class="flex items-center justify-between px-1">
+      <button id="open-settings" class="flex items-center gap-1.5 px-1.5 py-2 -mx-1.5 -my-2 rounded-md text-[#616161] dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer active:scale-[0.96] transition-transform">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="stroke-[#616161] dark:stroke-neutral-400"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8 v1.6 M8 12.6 v1.6 M1.8 8 h1.6 M12.6 8 h1.6 M3.6 3.6 l1.1 1.1 M11.3 11.3 l1.1 1.1 M12.4 3.6 l-1.1 1.1 M4.7 11.3 l-1.1 1.1"/></svg>
+        <span class="text-xs">Settings</span>
+      </button>
+      <div id="update"></div>
+    </div>
   </div>
+
+  <!-- Settings view -->
+  <div id="view-settings" class="hidden h-screen flex-col gap-2 p-3 overflow-y-auto">
+    <button id="close-settings" aria-label="Back to overview" class="flex items-center gap-2 px-1.5 py-1.5 -mx-1.5 -my-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer self-start active:scale-[0.96] transition-transform">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="stroke-[#616161] dark:stroke-neutral-400"><path d="M10 3 L5 8 L10 13"/></svg>
+      <span class="text-[13px] font-semibold">Settings</span>
+    </button>
+    <div id="settings"></div>
+  </div>
+
   <script src="renderer.js"></script>
 </body>
 </html>

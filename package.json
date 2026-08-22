@@ -7,9 +7,10 @@
     "build:main": "esbuild src/main/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js",
     "build:preload": "esbuild src/main/preload.ts --bundle --platform=node --external:electron --outfile=dist/preload.js",
     "build:renderer": "esbuild src/renderer/renderer.ts --bundle --outfile=dist/renderer.js",
+    "build:widget": "esbuild src/renderer/widget.ts --bundle --outfile=dist/widget.js",
     "build:css": "tailwindcss -i src/renderer/input.css -o dist/output.css --minify",
-    "build:html": "node -e \"require('fs').copyFileSync('src/renderer/index.html','dist/index.html')\"",
-    "build": "npm run build:main && npm run build:preload && npm run build:renderer && npm run build:css && npm run build:html",
+    "build:html": "node -e \"require('fs').copyFileSync('src/renderer/index.html','dist/index.html');require('fs').copyFileSync('src/renderer/widget.html','dist/widget.html')\"",
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer && npm run build:widget && npm run build:css && npm run build:html",
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder --win portable"
   },
