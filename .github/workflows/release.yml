@@ -17,11 +17,53 @@ jobs:
           node-version: 20
       - run: npm ci
       - run: npm run build
-      - run: npx electron-builder --win nsis --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # electron-builder uploads to a draft (reliable for the large installer);
-      # flip it live only after every asset has finished uploading.
-      - run: gh release edit ${{ github.ref_name }} --draft=false
+      - run: npx electron-builder --win nsis --publish never
+
+      # Secrets are not readable in `if:` expressions, so surface whether
+      # SignPath is configured as a step output first.
+      - name: Check SignPath configuration
+        id: signpath-config
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.SIGNPATH_API_TOKEN }}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SIGNPATH_API_TOKEN not set; publishing unsigned installer"
+          fi
+
+      - name: Upload unsigned installer
+        if: steps.signpath-config.outputs.enabled == 'true'
+        id: unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: release/*.exe
+          if-no-files-found: error
+
+      - name: Sign installer via SignPath
+        if: steps.signpath-config.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@v1.2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Apply signed installer and fix updater metadata
+        if: steps.signpath-config.outputs.enabled == 'true'
+        run: node scripts/apply-signed-installer.js signed release
+
+      # Publish as a draft first (reliable for the large installer); flip it
+      # live only after every asset has finished uploading.
+      - name: Create release
+        shell: bash
+        run: |
+          gh release create '${{ github.ref_name }}' --draft --title '${{ github.ref_name }}' --generate-notes
+          gh release upload '${{ github.ref_name }}' release/*.exe release/*.blockmap release/latest.yml
+          gh release edit '${{ github.ref_name }}' --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

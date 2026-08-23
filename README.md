@@ -53,8 +53,17 @@ Get the latest **Agent Usage Setup `x.y.z`.exe** from the
 Then run it. The app installs for one user. It needs no admin rights. It adds a
 Start Menu shortcut, a desktop shortcut, and an uninstaller.
 
-> The app is not signed. Windows SmartScreen shows "Unknown publisher". Click
-> **More info**, then click **Run anyway**.
+> The app is not signed yet. Windows SmartScreen shows "Unknown publisher".
+> Click **More info**, then click **Run anyway**.
+
+## Code signing
+
+Free code signing is provided by [SignPath.io](https://signpath.io), with a
+certificate from the [SignPath Foundation](https://signpath.org).
+
+This program will not transfer any information to other networked systems
+unless it is needed for the features above (the Anthropic and ChatGPT usage
+APIs) or the person who operates it requests it.
 
 ## Build from source
 
