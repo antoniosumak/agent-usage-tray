@@ -6,7 +6,6 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { execFileSync } = require("child_process");
 
 const [signedDir, releaseDir] = process.argv.slice(2);
 if (!signedDir || !releaseDir) {
@@ -32,25 +31,31 @@ if (!signedExe) throw new Error(`no .exe found under ${signedDir}`);
 const targetExe = path.join(releaseDir, path.basename(signedExe));
 if (!fs.existsSync(targetExe)) throw new Error(`unsigned counterpart missing: ${targetExe}`);
 
-const latestYmlPath = path.join(releaseDir, "latest.yml");
-let latestYml = fs.readFileSync(latestYmlPath, "utf8");
-const oldSha512 = crypto.createHash("sha512").update(fs.readFileSync(targetExe)).digest("base64");
-const oldSize = fs.statSync(targetExe).size;
+async function main() {
+  const latestYmlPath = path.join(releaseDir, "latest.yml");
+  let latestYml = fs.readFileSync(latestYmlPath, "utf8");
+  const oldSha512 = crypto.createHash("sha512").update(fs.readFileSync(targetExe)).digest("base64");
+  const oldSize = fs.statSync(targetExe).size;
 
-fs.copyFileSync(signedExe, targetExe);
+  fs.copyFileSync(signedExe, targetExe);
 
-// Regenerate the differential-update blockmap with electron-builder's bundled
-// app-builder binary.
-const { appBuilderPath } = require("app-builder-bin");
-execFileSync(appBuilderPath, ["blockmap", "--input", targetExe, "--output", `${targetExe}.blockmap`], {
-  stdio: ["ignore", "inherit", "inherit"],
+  // Regenerate the differential-update blockmap (electron-builder >= 26 builds
+  // it in JS; the standalone .blockmap file is gzip-compressed).
+  const blockmapModule = require.resolve("app-builder-lib/out/targets/blockmap/blockmap", {
+    paths: [process.cwd(), path.join(__dirname, "..")],
+  });
+  const { buildBlockMap } = require(blockmapModule);
+  const { sha512: newSha512, size: newSize } = await buildBlockMap(targetExe, "gzip", `${targetExe}.blockmap`);
+
+  latestYml = latestYml.split(oldSha512).join(newSha512).split(String(oldSize)).join(String(newSize));
+  fs.writeFileSync(latestYmlPath, latestYml);
+
+  console.log(`signed installer applied: ${path.basename(targetExe)}`);
+  console.log(`sha512 ${oldSha512.slice(0, 12)}... -> ${newSha512.slice(0, 12)}...`);
+  console.log(`size ${oldSize} -> ${newSize}`);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
 });
-
-const newSha512 = crypto.createHash("sha512").update(fs.readFileSync(targetExe)).digest("base64");
-const newSize = fs.statSync(targetExe).size;
-latestYml = latestYml.split(oldSha512).join(newSha512).split(String(oldSize)).join(String(newSize));
-fs.writeFileSync(latestYmlPath, latestYml);
-
-console.log(`signed installer applied: ${path.basename(targetExe)}`);
-console.log(`sha512 ${oldSha512.slice(0, 12)}... -> ${newSha512.slice(0, 12)}...`);
-console.log(`size ${oldSize} -> ${newSize}`);
