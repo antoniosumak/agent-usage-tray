@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Usage — Claude quotas & AI agent costs in your Windows tray</title>
+<meta name="description" content="Agent Usage is a Windows tray app that shows your live Claude quotas and tracks tokens and cost across Claude Code, Codex, and Cursor. Everything stays on your computer.">
+<meta property="og:title" content="Agent Usage">
+<meta property="og:description" content="Live Claude quotas and cross-agent token/cost tracking in your Windows tray. 100% local.">
+<meta property="og:image" content="https://antoniosumak.github.io/agent-usage-tray/screenshots/popup-dark.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230b0d10'/%3E%3Crect x='18' y='30' width='64' height='12' rx='6' fill='%233b82f6'/%3E%3Crect x='18' y='58' width='40' height='12' rx='6' fill='%2322c55e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d10;
+    --bg-soft: #101318;
+    --card: #14181f;
+    --card-border: #232a35;
+    --text: #e8ecf1;
+    --muted: #9aa4b2;
+    --accent: #3b82f6;
+    --accent-soft: rgba(59, 130, 246, 0.12);
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--text); }
+  .brand:hover { text-decoration: none; }
+  .brand-mark {
+    width: 28px; height: 28px; border-radius: 8px; background: var(--card);
+    border: 1px solid var(--card-border);
+    display: grid; place-items: center; gap: 3px; align-content: center;
+    padding: 7px 6px;
+  }
+  .brand-mark span { display: block; height: 3px; border-radius: 2px; }
+  .brand-mark span:first-child { width: 16px; background: var(--accent); }
+  .brand-mark span:last-child { width: 10px; background: var(--green); }
+  .nav-links { display: flex; gap: 22px; align-items: center; font-size: 14px; }
+  .nav-links a { color: var(--muted); font-weight: 500; }
+  .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+  /* Hero */
+  header.hero { padding: 72px 0 40px; text-align: center; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid rgba(59,130,246,.25);
+    font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px;
+    margin-bottom: 24px;
+  }
+  h1 {
+    font-size: clamp(34px, 5.5vw, 56px);
+    font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
+    max-width: 760px; margin: 0 auto 20px;
+  }
+  h1 .grad {
+    background: linear-gradient(90deg, #60a5fa, #3b82f6, #22c55e);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sub {
+    font-size: 19px; color: var(--muted); max-width: 620px; margin: 0 auto 36px;
+  }
+  .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-weight: 600; font-size: 16px; border-radius: 12px;
+    padding: 14px 26px; transition: transform .12s ease, background .12s ease;
+  }
+  .btn:hover { text-decoration: none; transform: translateY(-1px); }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 8px 24px rgba(59,130,246,.35); }
+  .btn-primary:hover { background: #2f74e8; }
+  .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--card-border); }
+  .btn-ghost:hover { border-color: #3a4454; }
+  .cta-note { font-size: 13px; color: var(--muted); }
+
+  /* Hero screenshot */
+  .hero-shot { margin: 56px auto 0; position: relative; max-width: 860px; }
+  .hero-shot::before {
+    content: ''; position: absolute; inset: -60px -80px;
+    background: radial-gradient(ellipse at center, rgba(59,130,246,.18), transparent 65%);
+    pointer-events: none;
+  }
+  .shots { position: relative; display: flex; justify-content: center; align-items: flex-start; gap: 28px; flex-wrap: wrap; }
+  .shots img {
+    max-width: 100%; border-radius: 16px;
+    border: 1px solid var(--card-border);
+    box-shadow: 0 24px 60px rgba(0,0,0,.55);
+  }
+  .shot-main { width: 340px; }
+  .shot-side { width: 340px; display: flex; flex-direction: column; gap: 24px; }
+  .shot-side figure { margin: 0; }
+  .shot-side figcaption { font-size: 13px; color: var(--muted); margin-top: 10px; text-align: center; }
+
+  /* Sections */
+  section { padding: 80px 0; }
+  .section-title { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; text-align: center; margin-bottom: 12px; }
+  .section-sub { color: var(--muted); text-align: center; max-width: 560px; margin: 0 auto 48px; }
+
+  /* Features */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .card {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: var(--radius); padding: 26px;
+  }
+  .card h3 { font-size: 17px; font-weight: 700; margin: 14px 0 8px; }
+  .card p { font-size: 14.5px; color: var(--muted); }
+  .icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: grid; place-items: center; font-size: 20px;
+    background: var(--accent-soft);
+  }
+
+  /* Tray colors strip */
+  .tray-strip {
+    display: flex; justify-content: center; gap: 28px; flex-wrap: wrap;
+    margin-top: 40px; font-size: 14px; color: var(--muted);
+  }
+  .tray-strip span { display: inline-flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.g { background: var(--green); box-shadow: 0 0 10px rgba(34,197,94,.6); }
+  .dot.y { background: var(--yellow); box-shadow: 0 0 10px rgba(234,179,8,.6); }
+  .dot.r { background: var(--red); box-shadow: 0 0 10px rgba(239,68,68,.6); }
+
+  /* Privacy / how it works */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+  .split .card h3 { margin-top: 0; font-size: 19px; }
+  .split .card ul { list-style: none; margin-top: 14px; }
+  .split .card li { font-size: 14.5px; color: var(--muted); padding: 7px 0 7px 26px; position: relative; }
+  .split .card li::before {
+    content: ''; position: absolute; left: 4px; top: 14px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+  }
+  .split .card.privacy li::before { background: var(--green); }
+
+  /* Download */
+  #download .card {
+    background: linear-gradient(160deg, var(--card), var(--bg-soft));
+    text-align: center; padding: 56px 32px;
+  }
+  #download h2 { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 10px; }
+  #download p { color: var(--muted); max-width: 540px; margin: 0 auto 28px; }
+  .smallprint { font-size: 13px; color: var(--muted); margin-top: 22px; }
+  .smallprint code { background: var(--bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 2px 7px; font-size: 12.5px; }
+
+  footer {
+    border-top: 1px solid var(--card-border);
+    padding: 32px 0 48px; text-align: center;
+    color: var(--muted); font-size: 14px;
+  }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#">
+      <span class="brand-mark"><span></span><span></span></span>
+      Agent Usage
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="https://github.com/antoniosumak/agent-usage-tray">GitHub</a>
+      <a href="#download">Download</a>
+    </div>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="pill"><span class="dot g"></span> Free &amp; open source · Windows</div>
+    <h1>Your Claude quotas and AI agent costs, <span class="grad">right in the tray</span></h1>
+    <p class="sub">Agent Usage shows your live Claude session and weekly limits, and tracks tokens and dollars across Claude Code, Codex, and Cursor. Everything stays on your computer.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest">⬇&nbsp; Download for Windows</a>
+      <a class="btn btn-ghost" href="https://github.com/antoniosumak/agent-usage-tray">View on GitHub</a>
+    </div>
+    <div class="cta-note">Free · MIT licensed · No account, no cloud, no telemetry</div>
+
+    <div class="hero-shot">
+      <div class="shots">
+        <img class="shot-main" src="screenshots/popup-dark.png" alt="The Agent Usage popup in dark mode. It shows Claude quota bars, today's cost across agents, per-model cost, and the burn rate.">
+        <div class="shot-side">
+          <figure>
+            <img src="screenshots/settings.png" alt="The settings view with refresh interval, warning threshold, startup option, and section toggles.">
+            <figcaption>Simple settings — refresh rate, warnings, startup</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/widget.png" alt="The floating desktop widget showing the 5-hour and 7-day quota bars.">
+            <figcaption>Optional floating widget with your quota bars</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <h2 class="section-title">Everything you need to stay under the limit</h2>
+    <p class="section-sub">One glance at the tray tells you where you stand. One click shows the full picture.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="icon">📊</div>
+        <h3>Live Claude quotas</h3>
+        <p>See your 5-hour session limit, weekly limits, and usage credits in real time — with reset countdowns so you know exactly when you get headroom back.</p>
+      </div>
+      <div class="card">
+        <div class="icon">💸</div>
+        <h3>Cross-agent cost tracking</h3>
+        <p>Tokens and dollars across Claude Code, Codex, and Cursor. Group cost by agent, by model, by tool or MCP server, and by project.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🔥</div>
+        <h3>Burn rate</h3>
+        <p>Current tokens per minute and dollars per hour, plus an estimate of when you'll hit the session limit at your current pace.</p>
+      </div>
+      <div class="card">
+        <div class="icon">📈</div>
+        <h3>Activity charts</h3>
+        <p>Cost per 5-hour block and a heatmap of your token use for each hour of the day, so you can see your patterns at a glance.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🔔</div>
+        <h3>Limit warnings</h3>
+        <p>Set a threshold and get a Windows notification — once, not a nag — when you cross it.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🪟</div>
+        <h3>Desktop widget</h3>
+        <p>An optional always-visible widget floats near the tray with your session bar and 7-day bar.</p>
+      </div>
+    </div>
+
+    <div class="tray-strip">
+      <span>The tray icon changes color as you approach a limit:</span>
+      <span><span class="dot g"></span> low use</span>
+      <span><span class="dot y"></span> medium use</span>
+      <span><span class="dot r"></span> high use</span>
+    </div>
+  </div>
+</section>
+
+<section id="how" style="padding-top: 0;">
+  <div class="wrap">
+    <h2 class="section-title">How it works</h2>
+    <p class="section-sub">No sign-up, no API keys to paste. It reads what's already on your machine.</p>
+    <div class="split">
+      <div class="card">
+        <h3>⚙️ Data sources</h3>
+        <ul>
+          <li>Quota data comes from your existing Claude Code login — the app reads the OAuth token from your local <strong>~/.claude</strong> folder and calls the Anthropic usage API.</li>
+          <li>Cost data comes from <strong>tokscale</strong>, which reads your local agent logs and calculates tokens and cost. It runs via <strong>bunx</strong> or <strong>npx</strong>, so you need bun or node for this feature.</li>
+        </ul>
+      </div>
+      <div class="card privacy">
+        <h3>🔒 Private by design</h3>
+        <ul>
+          <li>Everything stays on your computer. No data is stored in the cloud.</li>
+          <li>The only network call is to the Anthropic usage API, using your own login.</li>
+          <li>No account, no telemetry, no tracking.</li>
+          <li>Open source under the MIT license — read the code yourself.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="download" style="padding-top: 0;">
+  <div class="wrap">
+    <div class="card">
+      <h2>Get Agent Usage</h2>
+      <p>Download the latest installer from the Releases page and run it. It installs for one user, needs no admin rights, and adds Start Menu and desktop shortcuts plus an uninstaller.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest">⬇&nbsp; Download the latest release</a>
+      </div>
+      <p class="smallprint">The app is not signed, so Windows SmartScreen shows "Unknown publisher". Click <strong>More info</strong>, then <strong>Run anyway</strong>.<br>
+      Prefer to build from source? <code>npm ci &amp;&amp; npm run dist</code></p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Agent Usage · MIT License · <a href="https://github.com/antoniosumak/agent-usage-tray">GitHub</a> · <a href="https://github.com/antoniosumak/agent-usage-tray/issues">Report an issue</a>
+  </div>
+</footer>
+
+</body>
+</html>
