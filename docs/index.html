@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Usage — Live Claude quotas &amp; agent cost tracking for Windows</title>
+<meta name="description" content="A Windows tray app that shows your live Claude quotas and tracks tokens and cost across Claude Code, Codex, and Cursor. Everything stays on your machine.">
+<meta name="theme-color" content="#FAFAFA">
+<meta property="og:title" content="Agent Usage">
+<meta property="og:description" content="Live Claude quotas and cross-agent cost tracking in your Windows tray.">
+<meta property="og:image" content="https://antoniosumak.github.io/agent-usage-tray/screenshots/popup-light.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111111'/%3E%3Cpath d='M8 20l5-8 4 5 3-4 4 7' stroke='%23ffffff' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAFA;
+    --white: #FFFFFF;
+    --ink-950: #0A0A0A;
+    --ink-900: #111111;
+    --ink-800: #1A1A1A;
+    --ink-700: #333333;
+    --ink-600: #444444;
+    --ink-500: #6E6E6E;
+    --ink-400: #6E6E6E; /* 4.9:1 on #FAFAFA at 13px; #737373 passed AA by 0.04 */
+    --line-150: #EBEBEB;
+    --warm-200: #E5E3E0;
+    --warm-100: #F0EEEC;
+    --warm-50: #F8F7F6;
+    --accent: #2E6FDB;
+    --accent-strong: #1D5FB8;
+    --green: #1B6B3F;
+    --green-soft: #DCEFE3;
+
+    --shadow-card: 0px 4px 24px rgba(0,0,0,.07), 0px 0px 0px 1px rgba(0,0,0,.03);
+    --shadow-card-sm: 0px 1px 12px rgba(0,0,0,.05), 0px 0px 0px 1px rgba(0,0,0,.03);
+
+    --radius-button: 10px;
+    --radius-card: 14px;
+    --radius-section: 20px;
+
+    --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+    --reveal-duration: 700ms;
+
+    --font: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink-900);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  ::selection { background: rgba(46, 111, 219, .18); }
+  a { color: inherit; text-decoration: none; }
+  img { max-width: 100%; display: block; height: auto; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  .skip { position: absolute; left: 16px; top: -100px; z-index: 100; padding: 10px 14px; background: var(--ink-950); color: var(--white); border-radius: var(--radius-button); font-weight: 600; font-size: 14px; }
+  .skip:focus-visible { top: 16px; }
+  main:focus { outline: none; }
+  section[id] { scroll-margin-top: 88px; } /* 64px sticky nav + breathing room */
+
+  /* ---------- nav ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(12px);
+    background: rgba(250, 250, 250, .82);
+    border-bottom: 1px solid var(--line-150);
+  }
+  .nav-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 15px; letter-spacing: -.01em; color: var(--ink-950); padding: 8px 0; white-space: nowrap; }
+  .logo svg { border-radius: 7px; }
+  .nav-links { display: flex; align-items: center; gap: 6px; }
+  .nav-links a.plain {
+    color: var(--ink-500); font-size: 14px; font-weight: 500;
+    padding: 10px 12px; border-radius: 8px;
+    transition: color .15s, background-color .15s;
+  }
+  .nav-links a.plain:hover { color: var(--ink-900); background: var(--warm-100); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: var(--font); font-size: 14px; font-weight: 600;
+    min-height: 40px; padding: 9px 18px; border-radius: var(--radius-button);
+    cursor: pointer; border: 1px solid transparent; white-space: nowrap;
+    transition: background-color .15s, border-color .15s, color .15s, transform 160ms var(--ease-out-strong);
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary { background: var(--ink-950); color: var(--white); }
+  .btn-primary:hover { background: var(--ink-800); }
+  .btn-ghost {
+    background: var(--white); color: var(--ink-700);
+    border-color: var(--warm-200);
+    box-shadow: var(--shadow-card-sm);
+  }
+  .btn-ghost:hover { background: var(--warm-50); border-color: #d5d2ce; }
+  .btn-lg { font-size: 15px; padding: 13px 26px; min-height: 48px; min-width: 236px; }
+  .btn-icon { padding-left: 24px; }
+  .btn-icon svg { flex-shrink: 0; }
+
+  /* ---------- hero ---------- */
+  .hero { position: relative; overflow: hidden; background: var(--white); border-bottom: 1px solid var(--line-150); }
+  .hero-glow { position: absolute; inset: 0; pointer-events: none; }
+  /* soft accent wash behind the product */
+  .hero-glow::after {
+    content: ""; position: absolute; top: -25%; right: -12%; width: 62%; height: 125%;
+    background: radial-gradient(closest-side, rgba(46,111,219,.11), transparent 72%);
+  }
+  .hero-inner {
+    position: relative;
+    display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 48px; align-items: center;
+    padding: 64px 24px 0;
+  }
+  .hero-copy { display: flex; flex-direction: column; align-items: flex-start; padding-bottom: 96px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 500; color: var(--ink-700);
+    border: 1px solid var(--warm-200); border-radius: 99px;
+    padding: 5px 12px 5px 5px; margin-bottom: 28px;
+    background: var(--white);
+    box-shadow: var(--shadow-card-sm);
+  }
+  .pill .tag { font-size: 11px; font-weight: 650; color: var(--white); background: var(--accent); border-radius: 99px; padding: 2px 7px; letter-spacing: .02em; }
+  h1 {
+    font-size: clamp(40px, 4.9vw, 68px);
+    font-weight: 700; letter-spacing: -.042em; line-height: 1.06;
+    color: var(--ink-950);
+    max-width: 620px; margin: 0 0 22px;
+    text-wrap: balance;
+  }
+  .sub {
+    font-size: 18px; color: var(--ink-500); line-height: 1.6;
+    max-width: 500px; margin: 0 0 32px;
+    text-wrap: pretty;
+  }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .cta-note { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; font-weight: 500; color: var(--ink-400); }
+
+  /* hero stage: popup in light perspective, cropped by the section's bottom rule */
+  .hero-stage {
+    position: relative; height: 640px; align-self: end;
+    perspective: 1600px;
+    mask-image: linear-gradient(#000 70%, transparent 100%);
+    -webkit-mask-image: linear-gradient(#000 70%, transparent 100%);
+  }
+  .hero-shot {
+    position: absolute; left: 10%; top: 0; width: min(380px, 82%);
+    border-radius: var(--radius-section);
+    overflow: hidden;
+    background: #f5f5f5;
+    outline: 1px solid rgba(0,0,0,.1); outline-offset: -1px;
+    box-shadow: 0px 40px 90px rgba(0,0,0,.14), 0px 8px 24px rgba(0,0,0,.06);
+    container-type: inline-size;
+    text-align: left;
+    transform: rotateY(-8deg) rotateX(3deg);
+    transform-origin: 50% 20%;
+    transition: transform 900ms var(--ease-out-strong);
+  }
+  /* settles in from deeper in perspective once the mock is on screen (.in from the IO below) */
+  .js .hero-shot:not(.in) { transform: rotateY(-18deg) rotateX(7deg); }
+  .hero-shot .pp-win, .hero-shot .pp { font-size: 12px; }
+
+  /* hero entrance */
+  @keyframes hero-fade-up {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero-enter {
+    opacity: 0;
+    animation: hero-fade-up var(--reveal-duration) var(--ease-out-strong) forwards;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  /* ---------- agents row ---------- */
+  .agents { padding: 40px 0 8px; text-align: center; }
+  .agents p { font-size: 13px; color: var(--ink-400); text-transform: uppercase; letter-spacing: .12em; font-weight: 650; margin-bottom: 20px; }
+  .agent-logos { display: flex; justify-content: center; gap: 44px; flex-wrap: wrap; color: var(--ink-600); }
+  .agent-logos span { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+  .agent-logos .agent-ic { width: 18px; height: 18px; flex-shrink: 0; }
+
+  /* ---------- sections ---------- */
+  section { padding: 96px 0; }
+  .kicker {
+    display: inline-flex;
+    font-size: 13px; font-weight: 650; color: var(--accent-strong);
+    text-transform: uppercase; letter-spacing: .12em; margin-bottom: 16px;
+  }
+  h2 {
+    font-size: clamp(30px, 4vw, 42px); font-weight: 750;
+    letter-spacing: -.03em; line-height: 1.12; margin-bottom: 14px;
+    color: var(--ink-950);
+    text-wrap: balance;
+  }
+  .section-sub { color: var(--ink-500); font-size: 16px; line-height: 1.65; max-width: 560px; text-wrap: pretty; }
+
+  /* bento */
+  .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-top: 52px; }
+  .card {
+    background: var(--white);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card-sm);
+    padding: 26px 26px 0;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .card h3 { font-size: 17px; font-weight: 700; letter-spacing: -.015em; margin-bottom: 6px; color: var(--ink-950); text-wrap: balance; }
+  .card p { font-size: 14px; line-height: 1.6; color: var(--ink-500); margin-bottom: 22px; text-wrap: pretty; }
+  .card .shot {
+    margin: auto -1px -1px;
+    padding: 12px 12px 0; container-type: inline-size;
+    border-top-left-radius: 20px; border-top-right-radius: 20px; /* 8px inner + 12px padding */
+    overflow: hidden; background: var(--warm-50);
+    outline: 1px solid rgba(0,0,0,.1); outline-offset: -1px;
+  }
+  .card .shot img { width: 100%; }
+  .span-2 { grid-column: span 2; }
+  .span-3 { grid-column: span 3; }
+
+  /* ---------- widget strip ---------- */
+  .widget-strip {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+  }
+  .widget-visual {
+    background:
+      radial-gradient(420px 260px at 60% 40%, rgba(46,111,219,.06), transparent 70%),
+      var(--warm-100);
+    border-radius: var(--radius-section);
+    padding: clamp(28px, 8vw, 64px) 24px; display: flex; align-items: center; justify-content: center;
+  }
+  .widget-visual img {
+    max-width: 400px; width: 100%;
+    filter: drop-shadow(0 24px 40px rgba(0,0,0,.22));
+  }
+  .checklist { list-style: none; margin-top: 28px; display: grid; gap: 14px; }
+  .checklist li { display: flex; gap: 12px; align-items: flex-start; color: var(--ink-600); font-size: 15px; line-height: 1.55; text-wrap: pretty; }
+  .check {
+    flex-shrink: 0; margin-top: 2px;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 99px;
+    background: var(--green-soft); color: var(--green);
+  }
+
+  /* ---------- privacy ---------- */
+  .pp-mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .917em; }
+  .pp-tag { font-size: max(.75em, 10px); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 0 .4em; border-radius: .3em; line-height: 1.6; background: var(--green-soft); color: var(--green); flex-shrink: 0; }
+  .pp-tag.off { background: var(--track); color: var(--lbl); } /* --mute on --track is 4.1:1; --lbl clears AA at 10px */
+  .pp-list { display: flex; flex-direction: column; }
+  .pp-list .check { width: 1.5em; height: 1.5em; margin-top: 0; }
+  .pp-list > * { display: flex; justify-content: space-between; align-items: center; gap: .5em; padding: .55em 0; border-top: 1px solid var(--track); }
+  .pp-list > :first-child { border-top: 0; padding-top: 0; }
+  .pp-list .pp-name { color: var(--ink); white-space: normal; overflow-wrap: anywhere; align-items: flex-start; } /* paths wrap (at <wbr>) instead of clipping at 320px */
+  .pp-list .pp-name .pp-ic { margin-top: .05em; } /* icon sits on the first line when a path wraps */
+  .pp-list .pp-meta { color: var(--mute); font-size: .917em; }
+  .pp.pp-term { background: #1a1a1a; color: #d6d6d6; border-color: #1a1a1a; box-shadow: none; }
+  .pp-term .pp-mono { font-size: 1em; line-height: 1.6; }
+  .pp-term .pp-mono b { color: #fff; font-weight: 500; }
+  .pp-term .pp-mono i { font-style: normal; color: #7dd3a0; }
+  .pp-term .pp-mono span { color: #8a8a8a; }
+  .pp-dots { display: flex; gap: .4em; }
+  .pp-dots i { width: .7em; height: .7em; border-radius: 99px; background: #3a3a3a; }
+
+  /* ---------- download: plain closing section ---------- */
+  .dl-card { text-align: center; }
+  .dl-card .section-sub { margin: 0 auto 30px; }
+  .dl-card .cta-row { justify-content: center; margin-bottom: 26px; }
+  /* one scan line of facts; same voice as the hero's .cta-note */
+  .dl-facts {
+    list-style: none; display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 8px 24px; font-size: 13px; font-weight: 500; color: var(--ink-400);
+    font-variant-numeric: tabular-nums;
+  }
+  .dl-facts li { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .dl-facts li::before { content: ""; width: 5px; height: 5px; border-radius: 99px; background: var(--green); flex-shrink: 0; }
+  .dl-facts #dl-version { color: var(--ink-700); font-weight: 600; }
+  .dl-facts a { color: var(--ink-600); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(0,0,0,.25); transition: text-decoration-color .15s, color .15s; }
+  .dl-facts a:hover { color: var(--ink-900); text-decoration-color: var(--ink-900); }
+  .dl-note {
+    margin: 22px auto 0; max-width: 560px;
+    font-size: 13px; line-height: 1.55; color: var(--ink-500); text-wrap: pretty;
+  }
+  .dl-note kbd { font: inherit; font-weight: 600; color: var(--ink-700); white-space: nowrap; }
+  .dl-note a { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(0,0,0,.25); transition: text-decoration-color .15s; }
+  .dl-note a:hover { text-decoration-color: var(--ink-900); }
+
+  /* ---------- footer ---------- */
+  footer { border-top: 1px solid var(--line-150); padding: 36px 0; }
+  .footer-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--ink-400); }
+  .footer-inner a { display: inline-block; color: var(--ink-500); padding: 12px 2px; margin: -8px -2px; transition: color .15s; }
+  .footer-inner a:hover { color: var(--ink-900); }
+
+  /* ---------- popup mocks (HTML recreation of the tray popup sections) ---------- */
+  .pp, .pp-win {
+    --ink: #1a1a1a; --mute: #6f6f6f; --lbl: #616161; --track: #ebebeb; --blue: #005bd3;
+    font-size: clamp(11px, 2.5cqw, 14px);
+    background: #fff; color: var(--ink);
+    border: 1px solid #e3e3e3; border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 1px 2px rgba(26,26,26,.05);
+    padding: 1.167em 1.167em 0;
+    display: flex; flex-direction: column; gap: .75em;
+    line-height: 1.35; text-align: left;
+    font-variant-numeric: tabular-nums;
+  }
+  .pp > :last-child { padding-bottom: 1.167em; }
+  /* full popup window (hero): title bar + stacked cards on the popup's grey ground */
+  .pp-win { display: flex; flex-direction: column; gap: .667em; padding: .667em .667em 0; color: var(--ink); line-height: 1.35; font-variant-numeric: tabular-nums; }
+  .pp-win .pp { border-radius: 1em; border-bottom: 1px solid #e3e3e3; }
+  .pp-bar { display: flex; align-items: center; gap: .6em; font-weight: 600; padding: .25em .5em; }
+  .pp-bar .pp-logo { display: inline-flex; width: 1.6em; height: 1.6em; border-radius: .4em; background: var(--ink); color: #fff; align-items: center; justify-content: center; }
+  .pp-bar .pp-logo svg { width: 1em; height: 1em; }
+  .pp-bar .pp-muted { margin-left: auto; font-weight: 400; font-size: .917em; }
+  /* hero quota: card hugs the active provider (bento keeps max height so the grid stays still) */
+  .pp-win .pp-stack { position: relative; }
+  .pp-win .pp-stack > .pp-grp:not(.on) { position: absolute; top: 0; left: 0; width: 100%; }
+  .pp-win .pp-stack { transition: height 350ms cubic-bezier(0.77, 0, 0.175, 1); } /* height set from JS so the card resizes instead of snapping */
+  .pp-label { font-weight: 600; color: var(--lbl); }
+  .pp-head { display: flex; justify-content: space-between; align-items: center; gap: .5em; }
+  .pp-muted { color: var(--mute); font-weight: 400; }
+  .pp-sm { font-size: .917em; }
+  .pp-rows { display: flex; flex-direction: column; gap: .833em; }
+  .pp-row { display: flex; flex-direction: column; gap: .4em; }
+  .pp-row-top { display: flex; justify-content: space-between; align-items: baseline; gap: .5em; }
+  .pp-name { display: flex; align-items: center; gap: .5em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pp-meta { color: var(--lbl); flex-shrink: 0; }
+  .pp-meta b, .pp-pct b { color: var(--ink); font-weight: 600; }
+  .pp-pct { font-weight: 600; }
+  .pp-ic { width: 1.333em; height: 1.333em; flex-shrink: 0; }
+  .pp-track { height: .333em; border-radius: 99px; background: var(--track); overflow: hidden; }
+  .pp-track.lg { height: .5em; }
+  .pp-fill {
+    height: 100%; border-radius: 99px; background: var(--blue); width: 100%;
+    /* width lives in the clip so a --w change retargets the same transition (period switch) */
+    clip-path: inset(0 calc(100% - var(--w)) 0 0 round 99px);
+    transition: clip-path 900ms var(--ease-out-strong);
+    transition-delay: calc(var(--i, 0) * 70ms + 200ms);
+  }
+  /* bento bars wait for the card's own fade-in (700ms + stagger) before drawing */
+  .bento .pp-fill { transition-delay: calc(var(--i, 0) * 70ms + 500ms); }
+  /* after the entrance, bars answer clicks immediately */
+  .settled .pp-fill { transition-delay: 0ms; transition-duration: 400ms; }
+  .js .reveal-group > .card:not(.in) .pp-fill, .js .hero-shot:not(.in) .pp-fill { clip-path: inset(0 100% 0 0 round 99px); }
+  .pp-big { font-size: 1.833em; font-weight: 600; letter-spacing: -.02em; }
+  .pp-tile { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .5em; }
+  .pp-tile span { display: flex; flex-direction: column; justify-content: flex-end; gap: .15em; min-width: 0; } /* values share a baseline when a label wraps */
+  .pp-tile small { font-size: max(.833em, 10px); text-transform: uppercase; letter-spacing: .04em; color: var(--mute); }
+  .pp-acc { display: flex; justify-content: space-between; align-items: center; padding: .25em 0; }
+  .pp-acc svg { width: .917em; height: .917em; color: #9a9a9a; }
+  .pp-pill { font-size: max(.75em, 10px); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 0 .35em; border-radius: .3em; background: var(--blue); color: #fff; line-height: 1.5; }
+  .pp-up { color: #008060; }
+  .pp-rate { font-size: 1.25em; font-weight: 600; letter-spacing: -.01em; }
+  /* segmented provider control: sliding white thumb */
+  .pp-seg { --n: 2; position: relative; display: flex; gap: 2px; padding: 2px; border-radius: .667em; background: var(--track); font-size: .917em; font-weight: 500; }
+  .pp-seg::before {
+    content: ""; position: absolute; top: 2px; bottom: 2px; left: 2px;
+    width: calc((100% - 4px - (var(--n) - 1) * 2px) / var(--n));
+    background: #fff; border-radius: calc(.667em - 2px); box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    transition: transform 250ms cubic-bezier(0.77, 0, 0.175, 1);
+  }
+  .pp-seg[data-sel="1"]::before { transform: translateX(calc(100% + 2px)); }
+  .pp-seg[data-sel="2"]::before { transform: translateX(calc(200% + 4px)); }
+  .pp-seg > * { position: relative; z-index: 1; flex: 1; min-height: 24px; display: flex; justify-content: center; align-items: center; gap: .5em; padding: .35em 0; color: var(--mute); transition: color 250ms ease; }
+  .pp-seg > .on { color: var(--ink); }
+  .pp-seg button { font: inherit; background: none; border: 0; border-radius: calc(.667em - 2px); cursor: pointer; }
+  .pp-seg button:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+  @media (hover: hover) and (pointer: fine) { .pp-seg button:not(.on):hover { color: var(--ink); } }
+  .pp-stack { display: grid; }
+  .pp-stack > .pp-grp { grid-area: 1 / 1; align-self: start; transition: opacity 250ms var(--ease-out-strong); }
+  .pp-stack > .pp-grp:not(.on) { opacity: 0; pointer-events: none; }
+  /* heatmap */
+  .pp-cells, .pp-ticks { display: flex; gap: 2px; }
+  .pp-cells span { flex: 1; height: 2em; border-radius: .2em; background: var(--track); position: relative; overflow: hidden; }
+  .pp-cells i { position: absolute; inset: 0; background: var(--blue); opacity: var(--o); transition: opacity 500ms var(--ease-out-strong); transition-delay: calc(var(--i) * 30ms + 200ms); }
+  .js .card:not(.in) .pp-cells i { opacity: 0; }
+  .pp-ticks span { flex: 1; text-align: center; font-size: max(.75em, 10px); color: var(--mute); }
+  @media (prefers-reduced-motion: reduce) {
+    .pp-fill, .pp-cells i, .pp-seg::before, .pp-grp, .pp-seg > *, .pp-win .pp-stack { transition-duration: 1ms; transition-delay: 0ms; }
+  }
+
+  /* ---------- reveal ---------- */
+  .js .reveal {
+    opacity: 0; transform: translateY(24px);
+    transition:
+      opacity var(--reveal-duration) var(--ease-out-strong),
+      transform var(--reveal-duration) var(--ease-out-strong);
+    transition-delay: var(--delay, 0ms);
+  }
+  .js .reveal.in { opacity: 1; transform: none; }
+
+  .js .reveal-group > * {
+    opacity: 0; transform: translateY(20px);
+    transition:
+      opacity var(--reveal-duration) var(--ease-out-strong),
+      transform var(--reveal-duration) var(--ease-out-strong);
+  }
+  .js .reveal-group > .in { opacity: 1; transform: none; }
+  .js .reveal-group > *:nth-child(1) { transition-delay: 0ms; }
+  .js .reveal-group > *:nth-child(2) { transition-delay: 60ms; }
+  .js .reveal-group > *:nth-child(3) { transition-delay: 120ms; }
+  .js .reveal-group > *:nth-child(4) { transition-delay: 180ms; }
+  .js .reveal-group > *:nth-child(5) { transition-delay: 240ms; }
+  .js .reveal-group > *:nth-child(6) { transition-delay: 300ms; }
+  .js .reveal-group > *:nth-child(7) { transition-delay: 360ms; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .hero-enter { animation: none; opacity: 1; }
+    .hero-shot { transition: none; }
+    .js .hero-shot:not(.in) { transform: rotateY(-8deg) rotateX(3deg); }
+    .js .reveal, .js .reveal-group > * {
+      transition-duration: .2s; transform: none !important;
+    }
+    .btn:active { transform: none; }
+  }
+
+  @media (max-width: 860px) {
+    .span-2, .span-3 { grid-column: span 3; } /* 2-up until phones */
+    .widget-strip { grid-template-columns: 1fr; gap: 36px; }
+    .dl-facts { flex-direction: column; align-items: flex-start; gap: 10px; width: max-content; max-width: 100%; margin: 0 auto; }
+    .dl-facts li { white-space: normal; text-align: left; }
+    section { padding: 64px 0; }
+    .hero-inner { grid-template-columns: 1fr; gap: 40px; padding: 56px 24px 0; }
+    .hero-copy { align-items: center; text-align: center; padding-bottom: 0; }
+    .hero-copy h1 { max-width: 560px; }
+    .hero-copy .cta-row { justify-content: center; }
+    .cta-note { justify-content: center; }
+    .hero-stage { height: 560px; perspective: none; mask-image: linear-gradient(#000 80%, transparent 100%); -webkit-mask-image: linear-gradient(#000 80%, transparent 100%); }
+    .hero-shot, .js .hero-shot:not(.in) { position: relative; left: auto; width: min(380px, 100%); margin: 0 auto; transform: none; }
+    .nav-links a.plain { font-size: 13px; padding: 10px 8px; }
+  }
+  @media (max-width: 560px) {
+    .span-2, .span-3 { grid-column: span 6; }
+  }
+  @media (max-width: 480px) {
+    .nav-links a.gh, .nav-links a.pv { display: none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-claude" viewBox="0 0 256 257"><path fill="#D97757" d="m50.228 170.321 50.357-28.257.843-2.463-.843-1.361h-2.462l-8.426-.518-28.775-.778-24.952-1.037-24.175-1.296-6.092-1.297L0 125.796l.583-3.759 5.12-3.434 7.324.648 16.202 1.101 24.304 1.685 17.629 1.037 26.118 2.722h4.148l.583-1.685-1.426-1.037-1.101-1.037-25.147-17.045-27.22-18.017-14.258-10.37-7.713-5.25-3.888-4.925-1.685-10.758 7-7.713 9.397.649 2.398.648 9.527 7.323 20.35 15.75L94.817 91.9l3.889 3.24 1.555-1.102.195-.777-1.75-2.917-14.453-26.118-15.425-26.572-6.87-11.018-1.814-6.61c-.648-2.723-1.102-4.991-1.102-7.778l7.972-10.823L71.42 0 82.05 1.426l4.472 3.888 6.61 15.101 10.694 23.786 16.591 32.34 4.861 9.592 2.592 8.879.973 2.722h1.685v-1.556l1.36-18.211 2.528-22.36 2.463-28.776.843-8.1 4.018-9.722 7.971-5.25 6.222 2.981 5.12 7.324-.713 4.73-3.046 19.768-5.962 30.98-3.889 20.739h2.268l2.593-2.593 10.499-13.934 17.628-22.036 7.778-8.749 9.073-9.657 5.833-4.601h11.018l8.1 12.055-3.628 12.443-11.342 14.388-9.398 12.184-13.48 18.147-8.426 14.518.778 1.166 2.01-.194 30.46-6.481 16.462-2.982 19.637-3.37 8.88 4.148.971 4.213-3.5 8.62-20.998 5.184-24.628 4.926-36.682 8.685-.454.324.519.648 16.526 1.555 7.065.389h17.304l32.21 2.398 8.426 5.574 5.055 6.805-.843 5.184-12.962 6.611-17.498-4.148-40.83-9.721-14-3.5h-1.944v1.167l11.666 11.406 21.387 19.314 26.767 24.887 1.36 6.157-3.434 4.86-3.63-.518-23.526-17.693-9.073-7.972-20.545-17.304h-1.36v1.814l4.73 6.935 25.017 37.59 1.296 11.536-1.814 3.76-6.481 2.268-7.13-1.297-14.647-20.544-15.1-23.138-12.185-20.739-1.49.843-7.194 77.448-3.37 3.953-7.778 2.981-6.48-4.925-3.436-7.972 3.435-15.749 4.148-20.544 3.37-16.333 3.046-20.285 1.815-6.74-.13-.454-1.49.194-15.295 20.999-23.267 31.433-18.406 19.702-4.407 1.75-7.648-3.954.713-7.064 4.277-6.286 25.47-32.405 15.36-20.092 9.917-11.6-.065-1.686h-.583L44.07 198.125l-12.055 1.555-5.185-4.86.648-7.972 2.463-2.593 20.35-13.999-.064.065Z"/></symbol>
+  <symbol id="i-openai" viewBox="0 0 256 260"><path fill="currentColor" d="M239.184 106.203a64.716 64.716 0 0 0-5.576-53.103C219.452 28.459 191 15.784 163.213 21.74A65.586 65.586 0 0 0 52.096 45.22a64.716 64.716 0 0 0-43.23 31.36c-14.31 24.602-11.061 55.634 8.033 76.74a64.665 64.665 0 0 0 5.525 53.102c14.174 24.65 42.644 37.324 70.446 31.36a64.72 64.72 0 0 0 48.754 21.744c28.481.025 53.714-18.361 62.414-45.481a64.767 64.767 0 0 0 43.229-31.36c14.137-24.558 10.875-55.423-8.083-76.483Zm-97.56 136.338a48.397 48.397 0 0 1-31.105-11.255l1.535-.87 51.67-29.825a8.595 8.595 0 0 0 4.247-7.367v-72.85l21.845 12.636c.218.111.37.32.409.563v60.367c-.056 26.818-21.783 48.545-48.601 48.601Zm-104.466-44.61a48.345 48.345 0 0 1-5.781-32.589l1.534.921 51.722 29.826a8.339 8.339 0 0 0 8.441 0l63.181-36.425v25.221a.87.87 0 0 1-.358.665l-52.335 30.184c-23.257 13.398-52.97 5.431-66.404-17.803ZM23.549 85.38a48.499 48.499 0 0 1 25.58-21.333v61.39a8.288 8.288 0 0 0 4.195 7.316l62.874 36.272-21.845 12.636a.819.819 0 0 1-.767 0L41.353 151.53c-23.211-13.454-31.171-43.144-17.804-66.405v.256Zm179.466 41.695-63.08-36.63L161.73 77.86a.819.819 0 0 1 .768 0l52.233 30.184a48.6 48.6 0 0 1-7.316 87.635v-61.391a8.544 8.544 0 0 0-4.4-7.213Zm21.742-32.69-1.535-.922-51.619-30.081a8.39 8.39 0 0 0-8.492 0L99.98 99.808V74.587a.716.716 0 0 1 .307-.665l52.233-30.133a48.652 48.652 0 0 1 72.236 50.391v.205ZM88.061 139.097l-21.845-12.585a.87.87 0 0 1-.41-.614V65.685a48.652 48.652 0 0 1 79.757-37.346l-1.535.87-51.67 29.825a8.595 8.595 0 0 0-4.246 7.367l-.051 72.697Zm11.868-25.58 28.138-16.217 28.188 16.218v32.434l-28.086 16.218-28.188-16.218-.052-32.434Z"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 466.73 532.09"><path fill="currentColor" d="M457.43,125.94L244.42,2.96c-6.84-3.95-15.28-3.95-22.12,0L9.3,125.94c-5.75,3.32-9.3,9.46-9.3,16.11v247.99c0,6.65,3.55,12.79,9.3,16.11l213.01,122.98c6.84,3.95,15.28,3.95,22.12,0l213.01-122.98c5.75-3.32,9.3-9.46,9.3-16.11v-247.99c0-6.65-3.55-12.79-9.3-16.11h-.01ZM444.05,151.99l-205.63,356.16c-1.39,2.4-5.06,1.42-5.06-1.36v-233.21c0-4.66-2.49-8.97-6.53-11.31L24.87,145.67c-2.4-1.39-1.42-5.06,1.36-5.06h411.26c5.84,0,9.49,6.33,6.57,11.39h-.01Z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 16 16"><path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<nav>
+  <div class="wrap nav-inner">
+    <a class="logo" href="#">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#111111"/><path d="M8 20l5-8 4 5 3-4 4 7" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Agent Usage
+    </a>
+    <div class="nav-links">
+      <a class="plain" href="#features">Features</a>
+      <a class="plain pv" href="#privacy">Privacy</a>
+      <a class="plain gh" href="https://github.com/antoniosumak/agent-usage-tray">GitHub</a>
+      <a class="btn btn-primary" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest">Download</a>
+    </div>
+  </div>
+</nav>
+
+<main id="main" tabindex="-1">
+<header class="hero">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <div class="hero-copy">
+      <div class="pill hero-enter" style="--delay: 0ms"><span class="tag">New</span>Codex quotas alongside Claude</div>
+      <h1 class="hero-enter" style="--delay: 80ms">Know what your agents burn.</h1>
+      <p class="sub hero-enter" style="--delay: 160ms">Live Claude quotas. Tokens and dollars per agent, model, tool, and project. One click from your Windows taskbar, zero cloud.</p>
+      <div class="cta-row hero-enter" style="--delay: 240ms">
+        <a class="btn btn-primary btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" id="dl-btn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2.9 7.2 2v6H1V2.9ZM8 1.9 15 1v7H8V1.9ZM1 8.8h6.2v6L1 13.9V8.8ZM8 8.8h7V15l-7-.9V8.8Z"/></svg>
+          Download for Windows
+        </a>
+        <a class="btn btn-ghost btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4 0 .5-.2.5-.4v-1.5c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.3 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-4 0-.9.3-1.6.8-2.1 0-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.5.8 1.2.8 2.1 0 3.1-1.9 3.8-3.6 4 .3.2.5.7.5 1.4v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .2Z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+      <p class="cta-note hero-enter" style="--delay: 300ms" id="dl-note"><span>Free · MIT</span><span>No account</span><span>Claude Code · Codex · Cursor</span></p>
+    </div>
+
+    <div class="hero-stage hero-enter" style="--delay: 320ms">
+    <div class="hero-shot" id="hero-mock" role="group" aria-label="Agent Usage popup preview">
+      <div class="pp-win">
+        <div class="pp-bar"><span class="pp-logo" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none"><path d="M2 11l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Agent Usage<span class="pp-muted">Updated just now</span></div>
+        <div class="pp" id="hero-quota">
+          <div class="pp-label">Quota</div>
+          <div class="pp-seg" data-sel="0" role="group" aria-label="Quota provider">
+            <button type="button" class="on" aria-pressed="true"><svg class="pp-ic" aria-hidden="true"><use href="#i-claude"/></svg>Claude</button>
+            <button type="button" aria-pressed="false"><svg class="pp-ic" aria-hidden="true"><use href="#i-openai"/></svg>Codex</button>
+          </div>
+          <div class="pp-stack">
+            <div class="pp-grp pp-rows on">
+              <div class="pp-row" style="--i:0"><div class="pp-row-top"><span>Session</span><span class="pp-pct"><b data-count="45" data-suf="%">45%</b> <span class="pp-muted">· resets in 1h</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:45%"></div></div></div>
+              <div class="pp-row" style="--i:1"><div class="pp-row-top"><span>Weekly</span><span class="pp-pct"><b data-count="63" data-suf="%">63%</b> <span class="pp-muted">· resets in 3d</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:63%"></div></div></div>
+              <div class="pp-row" style="--i:2"><div class="pp-row-top"><span>Weekly Fable</span><span class="pp-pct"><b data-count="41" data-suf="%">41%</b> <span class="pp-muted">· resets in 3d</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:41%"></div></div></div>
+              <div class="pp-row" style="--i:3"><div class="pp-row-top"><span>Usage credits</span><span class="pp-pct"><b>1%</b> <span class="pp-muted">· $6.67 / $1,000</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:1%"></div></div></div>
+            </div>
+            <div class="pp-grp pp-rows">
+              <div class="pp-row" style="--i:0"><div class="pp-row-top"><span>Session</span><span class="pp-pct"><b data-count="58" data-suf="%">58%</b> <span class="pp-muted">· resets in 1h</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:58%"></div></div></div>
+              <div class="pp-row" style="--i:1"><div class="pp-row-top"><span>Weekly</span><span class="pp-pct"><b data-count="34" data-suf="%">34%</b> <span class="pp-muted">· resets in 4d</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:34%"></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="pp-seg" id="hero-period" data-sel="0" style="--n:3" role="group" aria-label="Cost period">
+          <button type="button" class="on" aria-pressed="true">Today</button>
+          <button type="button" aria-pressed="false">7 days</button>
+          <button type="button" aria-pressed="false">30 days</button>
+        </div>
+        <div class="pp" id="hero-cost">
+          <div class="pp-head"><span class="pp-label" data-k="title">Today</span><span class="pp-muted pp-sm" data-k="tok">13.3M tokens</span></div>
+          <div style="display:flex;align-items:baseline;gap:.5em"><span class="pp-big" data-k="total" data-count="19.49" data-pre="$" data-dec="2">$19.49</span><span class="pp-muted pp-sm">across 3 agents</span></div>
+          <div class="pp-tile">
+            <span><small>In</small><span data-k="t0">640.0K</span></span><span><small>Out</small><span data-k="t1">410.0K</span></span><span><small>Cache read</small><span data-k="t2">11.8M</span></span><span><small>Cache write</small><span data-k="t3">440.0K</span></span><span><small>Hit rate</small><span data-k="t4">95%</span></span>
+          </div>
+          <div class="pp-rows">
+            <div class="pp-row" style="--i:0" data-k="a0"><div class="pp-row-top"><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-claude"/></svg>claude-code</span><span class="pp-meta"><span data-tok>8.4M</span> <b data-count="12.47" data-pre="$" data-dec="2">$12.47</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:100%"></div></div></div>
+            <div class="pp-row" style="--i:1" data-k="a1"><div class="pp-row-top"><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-openai"/></svg>codex</span><span class="pp-meta"><span data-tok>3.1M</span> <b data-count="4.83" data-pre="$" data-dec="2">$4.83</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:38.7%"></div></div></div>
+            <div class="pp-row" style="--i:2" data-k="a2"><div class="pp-row-top"><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-cursor"/></svg>cursor</span><span class="pp-meta"><span data-tok>1.8M</span> <b data-count="2.19" data-pre="$" data-dec="2">$2.19</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:17.6%"></div></div></div>
+          </div>
+          <div class="pp-acc"><span class="pp-label">Models</span><svg aria-hidden="true"><use href="#i-chev"/></svg></div>
+          <div class="pp-rows">
+            <div class="pp-row" style="--i:3" data-k="m0"><div class="pp-row-top"><span class="pp-name">claude-opus-4-8</span><span class="pp-meta"><span data-tok>7.1M</span> <b data-count="13.32" data-pre="$" data-dec="2">$13.32</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:100%"></div></div></div>
+            <div class="pp-row" style="--i:4" data-k="m1"><div class="pp-row-top"><span class="pp-name">gpt-5-codex</span><span class="pp-meta"><span data-tok>3.1M</span> <b data-count="4.83" data-pre="$" data-dec="2">$4.83</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:36.3%"></div></div></div>
+            <div class="pp-row" style="--i:5" data-k="m2"><div class="pp-row-top"><span class="pp-name">claude-sonnet-5</span><span class="pp-meta"><span data-tok>3.1M</span> <b data-count="1.34" data-pre="$" data-dec="2">$1.34</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:10.1%"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</header>
+
+<div class="agents reveal">
+  <div class="wrap">
+    <p>Works with the agents you run</p>
+    <div class="agent-logos">
+      <span><svg class="agent-ic" aria-hidden="true"><use href="#i-claude"/></svg>Claude Code</span>
+      <span><svg class="agent-ic" aria-hidden="true"><use href="#i-openai"/></svg>Codex</span>
+      <span><svg class="agent-ic" aria-hidden="true"><use href="#i-cursor"/></svg>Cursor</span>
+    </div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="kicker">Features</div>
+      <h2>One glance. Full picture.</h2>
+      <p class="section-sub">Everything lives in a tray popup that opens in milliseconds. No dashboard tab to keep open, no cloud account to sign into.</p>
+    </div>
+
+    <div class="bento reveal-group">
+      <div class="card span-3">
+        <h3>Live Claude quotas</h3>
+        <p>Session, weekly, and model-specific limits with reset countdowns. The tray icon shifts from green to yellow to red as you approach a cap.</p>
+        <div class="shot">
+          <div class="pp" id="mock-quota" role="img" aria-label="Quota section with session and weekly progress bars and reset times.">
+            <div class="pp-label">Quota</div>
+            <div class="pp-seg" data-sel="0">
+              <span class="on"><svg class="pp-ic" aria-hidden="true"><use href="#i-claude"/></svg>Claude</span>
+              <span><svg class="pp-ic" aria-hidden="true"><use href="#i-openai"/></svg>Codex</span>
+            </div>
+            <div class="pp-stack">
+              <div class="pp-grp pp-rows on">
+                <div class="pp-row" style="--i:0"><div class="pp-row-top"><span>Session</span><span class="pp-pct"><b data-count="45" data-suf="%">45%</b> <span class="pp-muted">· resets in 1h</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:45%"></div></div></div>
+                <div class="pp-row" style="--i:1"><div class="pp-row-top"><span>Weekly</span><span class="pp-pct"><b data-count="63" data-suf="%">63%</b> <span class="pp-muted">· resets in 3d</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:63%"></div></div></div>
+                <div class="pp-row" style="--i:2"><div class="pp-row-top"><span>Weekly Fable</span><span class="pp-pct"><b data-count="41" data-suf="%">41%</b> <span class="pp-muted">· resets in 3d</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:41%"></div></div></div>
+                <div class="pp-row" style="--i:3"><div class="pp-row-top"><span>Usage credits</span><span class="pp-pct"><b>1%</b> <span class="pp-muted">· $6.67 / $1,000</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:1%"></div></div></div>
+              </div>
+              <div class="pp-grp pp-rows">
+                <div class="pp-row" style="--i:0"><div class="pp-row-top"><span>Session</span><span class="pp-pct"><b data-count="58" data-suf="%">58%</b> <span class="pp-muted">· resets in 1h</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:58%"></div></div></div>
+                <div class="pp-row" style="--i:1"><div class="pp-row-top"><span>Weekly</span><span class="pp-pct"><b data-count="34" data-suf="%">34%</b> <span class="pp-muted">· resets in 4d</span></span></div><div class="pp-track lg"><div class="pp-fill" style="--w:34%"></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card span-3">
+        <h3>Cost across agents &amp; models</h3>
+        <p>Tokens in, tokens out, cache hit rate, and dollars — split by agent and by model, for today, 7 days, or 30 days.</p>
+        <div class="shot">
+          <div class="pp" role="img" aria-label="Cost section showing spend per agent and per model.">
+            <div class="pp-head"><span class="pp-label">Today</span><span class="pp-muted pp-sm">13.3M tokens</span></div>
+            <div style="display:flex;align-items:baseline;gap:.5em"><span class="pp-big" data-count="19.49" data-pre="$" data-dec="2">$19.49</span><span class="pp-muted pp-sm">across 3 agents</span></div>
+            <div class="pp-tile">
+              <span><small>In</small>640.0K</span><span><small>Out</small>410.0K</span><span><small>Cache read</small>11.8M</span><span><small>Cache write</small>440.0K</span><span><small>Hit rate</small>95%</span>
+            </div>
+            <div class="pp-rows">
+              <div class="pp-row" style="--i:0"><div class="pp-row-top"><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-claude"/></svg>claude-code</span><span class="pp-meta">8.4M <b>$12.47</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:100%"></div></div></div>
+              <div class="pp-row" style="--i:1"><div class="pp-row-top"><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-openai"/></svg>codex</span><span class="pp-meta">3.1M <b>$4.83</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:38.7%"></div></div></div>
+              <div class="pp-row" style="--i:2"><div class="pp-row-top"><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-cursor"/></svg>cursor</span><span class="pp-meta">1.8M <b>$2.19</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:17.6%"></div></div></div>
+            </div>
+            <div class="pp-acc"><span class="pp-label">Models</span><svg aria-hidden="true"><use href="#i-chev"/></svg></div>
+            <div class="pp-rows">
+              <div class="pp-row" style="--i:3"><div class="pp-row-top"><span class="pp-name">claude-opus-4-8</span><span class="pp-meta">7.9M <b>$15.12</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:100%"></div></div></div>
+              <div class="pp-row" style="--i:4"><div class="pp-row-top"><span class="pp-name">gpt-5-codex</span><span class="pp-meta">3.1M <b>$4.83</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:31.9%"></div></div></div>
+              <div class="pp-row" style="--i:5"><div class="pp-row-top"><span class="pp-name">claude-sonnet-5</span><span class="pp-meta">2.1M <b>$1.34</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:8.9%"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card span-2">
+        <h3>Burn rate</h3>
+        <p>Current tokens/min and $/hr, plus an ETA until you hit the session cap.</p>
+        <div class="shot">
+          <div class="pp" id="mock-burn" role="img" aria-label="Burn rate section showing tokens per minute and dollars per hour.">
+            <div class="pp-label">Burn rate</div>
+            <div style="display:flex;align-items:baseline;gap:.5em"><span class="pp-up" aria-hidden="true">▲</span><span class="pp-rate"><span data-burn-tok data-count="84" data-dec="1" data-suf="K">84.0K</span> tok/min · <span data-burn-usd data-count="6.40" data-pre="$" data-dec="2">$6.40</span>/hr</span></div>
+            <div class="pp-muted pp-sm">Session cap in <span data-burn-eta>~37m</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card span-2">
+        <h3>5-hour blocks</h3>
+        <p>Cost per Claude session window, with the current block highlighted.</p>
+        <div class="shot">
+          <div class="pp" role="img" aria-label="Cost by 5-hour block chart.">
+            <div class="pp-acc"><span class="pp-label">Cost by 5-hour block</span><svg aria-hidden="true"><use href="#i-chev"/></svg></div>
+            <div class="pp-rows">
+              <div class="pp-row" style="--i:0"><div class="pp-row-top"><span class="pp-name">00:00–05:00</span><span class="pp-meta">2.6M <b>$4.10</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:61.2%"></div></div></div>
+              <div class="pp-row" style="--i:1"><div class="pp-row-top"><span class="pp-name">05:00–10:00</span><span class="pp-meta">4.4M <b>$6.70</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:100%"></div></div></div>
+              <div class="pp-row" style="--i:2"><div class="pp-row-top"><span class="pp-name">10:00–15:00</span><span class="pp-meta">2.1M <b>$3.20</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:47.8%"></div></div></div>
+              <div class="pp-row" style="--i:3"><div class="pp-row-top"><span class="pp-name" style="font-weight:500">15:00–20:00 <span class="pp-pill">now</span></span><span class="pp-meta">4.2M <b>$5.49</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:81.9%"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card span-2">
+        <h3>Activity heatmap</h3>
+        <p>Token use by hour of day — see when you actually work.</p>
+        <div class="shot">
+          <div class="pp" role="img" aria-label="Hourly activity heatmap.">
+            <div class="pp-acc"><span class="pp-label">Activity by hour</span><svg aria-hidden="true"><use href="#i-chev"/></svg></div>
+            <div style="display:flex;flex-direction:column;gap:.333em">
+              <div class="pp-cells" id="mock-heat"></div>
+              <div class="pp-ticks"><span>0</span><span></span><span></span><span></span><span></span><span></span><span>6</span><span></span><span></span><span></span><span></span><span></span><span>12</span><span></span><span></span><span></span><span></span><span></span><span>18</span><span></span><span></span><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card span-3">
+        <h3>Spend by tool &amp; MCP</h3>
+        <p>Which tools eat your tokens — Edit, Bash, Read, or that one MCP server.</p>
+        <div class="shot">
+          <div class="pp" role="img" aria-label="Spend broken down by tool and MCP server.">
+            <div class="pp-acc"><span class="pp-label">Spend by tool &amp; MCP</span><svg aria-hidden="true"><use href="#i-chev"/></svg></div>
+            <div class="pp-rows">
+              <div class="pp-row" style="--i:0"><div class="pp-row-top"><span class="pp-name">Edit</span><span class="pp-meta">214 calls <b>$3.90</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:100%"></div></div></div>
+              <div class="pp-row" style="--i:1"><div class="pp-row-top"><span class="pp-name">Bash</span><span class="pp-meta">188 calls <b>$3.10</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:79.5%"></div></div></div>
+              <div class="pp-row" style="--i:2"><div class="pp-row-top"><span class="pp-name">Read</span><span class="pp-meta">402 calls <b>$2.40</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:61.5%"></div></div></div>
+              <div class="pp-row" style="--i:3"><div class="pp-row-top"><span class="pp-name">Grep</span><span class="pp-meta">96 calls <b>$1.20</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:30.8%"></div></div></div>
+              <div class="pp-row" style="--i:4"><div class="pp-row-top"><span class="pp-name">(text response)</span><span class="pp-meta">531 calls <b>$1.87</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:47.9%"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card span-3">
+        <h3>Spend by project</h3>
+        <p>Cost per repository, so you know where the budget actually goes.</p>
+        <div class="shot">
+          <div class="pp" role="img" aria-label="Spend broken down by project.">
+            <div class="pp-acc"><span class="pp-label">Spend by project</span><svg aria-hidden="true"><use href="#i-chev"/></svg></div>
+            <div class="pp-rows">
+              <div class="pp-row" style="--i:0"><div class="pp-row-top"><span class="pp-name">agent-usage</span><span class="pp-meta">7.1M <b>$11.20</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:100%"></div></div></div>
+              <div class="pp-row" style="--i:1"><div class="pp-row-top"><span class="pp-name">lia</span><span class="pp-meta">3.9M <b>$5.40</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:48.2%"></div></div></div>
+              <div class="pp-row" style="--i:2"><div class="pp-row-top"><span class="pp-name">afbis</span><span class="pp-meta">2.3M <b>$2.89</b></span></div><div class="pp-track"><div class="pp-fill" style="--w:25.8%"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap widget-strip">
+    <div class="reveal">
+      <div class="kicker">Desktop widget</div>
+      <h2>Quotas without clicking anything.</h2>
+      <p class="section-sub">An optional always-on-top widget floats near your tray with the session and weekly bars. Plus a one-time Windows notification when you cross a threshold you set.</p>
+      <ul class="checklist">
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Always visible, never in the way</li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Configurable warning threshold with native notifications</li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Light and dark themes, launch on startup</li>
+      </ul>
+    </div>
+    <div class="widget-visual reveal">
+      <img src="screenshots/widget.png" alt="The floating desktop widget with session and weekly quota bars." loading="lazy" width="1272" height="240">
+    </div>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="kicker">Privacy</div>
+      <h2>Your usage data never leaves your machine.</h2>
+      <p class="section-sub">No accounts. No telemetry. No cloud storage. The only network calls are the Anthropic and OpenAI quota checks, using the logins you already have, plus the GitHub update check.</p>
+    </div>
+    <div class="bento reveal-group">
+      <div class="card span-3">
+        <h3>Your existing logins</h3>
+        <p>Quota data comes from the OAuth tokens the Claude and Codex CLIs already keep on disk. Nothing new to sign into, nothing to paste in.</p>
+        <div class="shot">
+          <div class="pp" role="img" aria-label="Credential files the app reads: Claude and Codex, both read only.">
+            <div class="pp-label">Credentials</div>
+            <div class="pp-list">
+              <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-claude"/></svg><span class="pp-mono">~/.claude/<wbr>.credentials.json</span></span><span class="pp-tag">read only</span></div>
+              <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-openai"/></svg><span class="pp-mono">~/.codex/<wbr>auth.json</span></span><span class="pp-tag">read only</span></div>
+              <div><span class="pp-name pp-muted">New account or API key</span><span class="pp-tag off">none</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card span-3">
+        <h3>Every network call, listed</h3>
+        <p>Three hosts. Quota checks go straight to the providers with your own session, and the update check hits GitHub Releases. That is the whole list.</p>
+        <div class="shot">
+          <div class="pp" role="img" aria-label="Outbound hosts: api.anthropic.com, chatgpt.com, and github.com.">
+            <div class="pp-head"><span class="pp-label">Outbound</span><span class="pp-muted pp-sm">3 hosts</span></div>
+            <div class="pp-list">
+              <div><span class="pp-name pp-mono">api.anthropic.com</span><span class="pp-meta">Claude quota</span></div>
+              <div><span class="pp-name pp-mono">chatgpt.com</span><span class="pp-meta">Codex quota</span></div>
+              <div><span class="pp-name pp-mono">github.com</span><span class="pp-meta">Update check</span></div>
+              <div><span class="pp-name pp-mono pp-muted">anything else</span><span class="pp-tag off">none</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card span-2">
+        <h3>Local log parsing</h3>
+        <p>Cost is computed from the agent logs on your disk via tokscale. The logs stay where they are.</p>
+        <div class="shot">
+          <div class="pp" role="img" aria-label="Log folders parsed on device: ~/.claude/projects, ~/.codex/sessions, and ~/.cursor.">
+            <div class="pp-label">Parsed on device</div>
+            <div class="pp-list">
+              <div><span class="pp-name pp-mono">~/.claude/projects</span><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+              <div><span class="pp-name pp-mono">~/.codex/sessions</span><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+              <div><span class="pp-name pp-mono">~/.cursor</span><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card span-2">
+        <h3>Zero telemetry</h3>
+        <p>No analytics SDK, no crash reporter, no account. Nothing about you is collected, so nothing can leak.</p>
+        <div class="shot">
+          <div class="pp" role="img" aria-label="Zero bytes uploaded; no accounts, analytics, or cloud sync.">
+            <div class="pp-label">Uploaded</div>
+            <div style="display:flex;align-items:baseline;gap:.5em"><span class="pp-big">0</span><span class="pp-muted pp-sm">bytes, ever</span></div>
+            <div class="pp-tile" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+              <span><small>Accounts</small>0</span><span><small>Analytics</small>0</span><span><small>Cloud sync</small>0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card span-2">
+        <h3>Open source</h3>
+        <p>MIT licensed. Read every line, or build the installer yourself.</p>
+        <div class="shot">
+          <div class="pp pp-term" role="img" aria-label="Terminal building the installer from source.">
+            <div class="pp-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="pp-mono"><span>$</span> git clone <b>agent-usage-tray</b><br><span>$</span> npm install<br><span>$</span> npm run dist<br><i>✓</i> release/Agent Usage <data id="term-ver">0.1.4</data>.exe</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="download" id="download">
+  <div class="wrap">
+    <div class="dl-card">
+      <div class="reveal">
+        <div class="kicker">Download</div>
+        <h2>Up and running in 30 seconds.</h2>
+        <p class="section-sub">One installer, no admin rights. Updates arrive in the tray.</p>
+      </div>
+      <div class="cta-row reveal" style="--delay: 80ms">
+        <a class="btn btn-primary btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" id="dl-btn-2">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2.9 7.2 2v6H1V2.9ZM8 1.9 15 1v7H8V1.9ZM1 8.8h6.2v6L1 13.9V8.8ZM8 8.8h7V15l-7-.9V8.8Z"/></svg>
+          Download for Windows
+        </a>
+        <a class="btn btn-ghost btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray/releases">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4 0 .5-.2.5-.4v-1.5c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.3 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-4 0-.9.3-1.6.8-2.1 0-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.5.8 1.2.8 2.1 0 3.1-1.9 3.8-3.6 4 .3.2.5.7.5 1.4v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .2Z"/></svg>
+          All releases
+        </a>
+      </div>
+      <ul class="dl-facts reveal" style="--delay: 160ms" aria-label="Release details">
+        <li id="dl-version">Latest release</li>
+        <li>Windows 10 / 11 · x64</li>
+        <li>Per-user install, no admin</li>
+        <li>Auto-updates from GitHub</li>
+        <li>MIT · <a href="https://github.com/antoniosumak/agent-usage-tray">Source on GitHub</a></li>
+      </ul>
+      <p class="dl-note reveal" style="--delay: 240ms">Unsigned build: SmartScreen shows “Unknown publisher”. Choose <span style="white-space: nowrap"><kbd>More info</kbd> → <kbd>Run anyway</kbd></span>, or <a href="https://github.com/antoniosumak/agent-usage-tray#build-from-source">build from source</a>.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap footer-inner">
+    <span>© 2026 Agent Usage · MIT License</span>
+    <span>
+      <a href="https://github.com/antoniosumak/agent-usage-tray">GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/antoniosumak/agent-usage-tray/issues">Report an issue</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+  // scroll reveal
+  document.documentElement.classList.add('js');
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }, { threshold: 0.12 });
+  // cards reveal one by one so a stacked grid on narrow screens doesn't animate off-screen
+  document.querySelectorAll('.reveal, .reveal-group > *').forEach(el => io.observe(el));
+
+  // ---------- popup mocks: heatmap cells, count-ups, live loops ----------
+  const heat = document.getElementById('mock-heat');
+  // fake.ts: busy 9–18 (400K + h*20K), 20K otherwise; opacity = tokens/max, floor .15
+  heat.innerHTML = Array.from({ length: 24 }, (_, h) => {
+    const t = h >= 9 && h <= 18 ? 400 + h * 20 : 20;
+    return `<span title="${String(h).padStart(2, '0')}:00"><i style="--i:${h};--o:${Math.max(t / 760, .15).toFixed(3)}"></i></span>`;
+  }).join('');
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  // Animate a number to el.dataset.count (from `from`) over `dur` ms; markup already holds the final text.
+  function countUp(el, from = 0, dur = 900) {
+    const to = +el.dataset.count, dec = +(el.dataset.dec || 0), pre = el.dataset.pre || '', suf = el.dataset.suf || '';
+    const t0 = performance.now();
+    cancelAnimationFrame(el._raf); // interruptible: a retarget replaces the running count
+    const frame = now => {
+      const p = Math.min((now - t0) / dur, 1);
+      el.textContent = pre + (from + (to - from) * easeOut(p)).toFixed(dec) + suf;
+      if (p < 1) el._raf = requestAnimationFrame(frame);
+    };
+    el._raf = requestAnimationFrame(frame);
+  }
+  const bento = document.querySelector('.bento');
+  const quota = document.getElementById('mock-quota');
+  const burn = document.getElementById('mock-burn');
+  let seen = false, visible = false;
+  new IntersectionObserver(entries => {
+    for (const e of entries) {
+      visible = e.isIntersecting;
+      if (visible && !seen && !reduce) {
+        seen = true;
+        setTimeout(() => bento.querySelectorAll('.pp-grp.on [data-count], .pp:not(#mock-quota) [data-count]').forEach(el => countUp(el)), 200);
+        setTimeout(() => bento.classList.add('settled'), 1500);
+      }
+    }
+  }, { threshold: 0, rootMargin: '0px 0px -20% 0px' }).observe(bento); // the grid is taller than a phone viewport; a % threshold would never fire
+
+  if (!reduce) {
+    // Quota: flip Claude ⇄ Codex every 4s while on screen (shows the multi-provider tabs), 3 round trips then rest.
+    const seg = quota.querySelector('.pp-seg'), tabs = [...seg.children], grps = [...quota.querySelectorAll('.pp-grp')];
+    let sel = 0, flips = 0;
+    const flip = setInterval(() => {
+      if (!visible || !seen) return;
+      sel ^= 1;
+      seg.dataset.sel = sel;
+      tabs.forEach((t, i) => t.classList.toggle('on', i === sel));
+      grps.forEach((g, i) => g.classList.toggle('on', i === sel));
+      if (++flips >= 6) clearInterval(flip);
+    }, 4000);
+
+    burnLoop(burn, () => visible && seen);
+  }
+
+  // Burn: jitter the live rate every 2.5s while live(). $/hr and ETA follow tok/min (fake.ts ratios).
+  function burnLoop(card, live) {
+    const tok = card.querySelector('[data-burn-tok]'), usd = card.querySelector('[data-burn-usd]'), eta = card.querySelector('[data-burn-eta]');
+    let cur = 84, n = 0;
+    const id = setInterval(() => {
+      if (!live()) return;
+      const next = Math.round((78 + Math.random() * 14) * 10) / 10;
+      tok.dataset.count = next; usd.dataset.count = (next * 6.4 / 84).toFixed(2);
+      countUp(tok, cur, 400); countUp(usd, cur * 6.4 / 84, 400);
+      eta.textContent = `~${Math.round(37 * 84 / next)}m`;
+      cur = next;
+      if (++n >= 8) clearInterval(id); // WCAG 2.2.2: auto-updating content stops on its own (~20s)
+    }, 2500);
+  }
+
+  // ---------- hero: interactive popup mock ----------
+  // Wire a .pp-seg of buttons. Returns set(i). Marks data-user once a human clicks so auto-cycles stop.
+  function segInit(seg, onSel) {
+    const tabs = [...seg.children];
+    const set = i => {
+      seg.dataset.sel = i;
+      tabs.forEach((t, j) => { t.classList.toggle('on', j === i); t.setAttribute('aria-pressed', j === i); });
+      onSel(i);
+    };
+    tabs.forEach((t, i) => t.addEventListener("click", () => { seg.dataset.user = 1; set(i); }));
+    seg.addEventListener("focusin", () => { seg.dataset.user = 1; }); // keyboard focus also stops the auto-cycle
+    return set;
+  }
+  const hero = document.getElementById('hero-mock');
+  const heroQuota = document.getElementById('hero-quota');
+  const hq = [...heroQuota.querySelectorAll('.pp-grp')];
+  const hqStack = heroQuota.querySelector('.pp-stack');
+  const fitStack = () => { hqStack.style.height = hq.find(g => g.classList.contains('on')).offsetHeight + 'px'; };
+  segInit(heroQuota.querySelector('.pp-seg'), i => {
+    hq.forEach((g, j) => g.classList.toggle('on', j === i));
+    fitStack(); // card height eases instead of snapping the rows below
+  });
+  // any click inside the mock hands control to the visitor: both auto-cycles stop
+  hero.addEventListener('click', () => { document.getElementById('hero-period').dataset.user = 1; });
+  const heroIdle = () => !hero.matches(':hover, :focus-within'); // don't change numbers under a reader's cursor
+
+  // fake.ts-style figures per period: [title, tokens, total, tiles, agents[[tok,$,w]], models[[tok,$,w]]]
+  const PERIODS = [
+    ['Today', '13.3M', 19.49, ['640.0K', '410.0K', '11.8M', '440.0K', '95%'],
+      [['8.4M', 12.47, 100], ['3.1M', 4.83, 38.7], ['1.8M', 2.19, 17.6]],
+      [['7.1M', 13.32, 100], ['3.1M', 4.83, 36.3], ['3.1M', 1.34, 10.1]]],
+    ['Last 7 days', '84.1M', 112.80, ['4.1M', '2.6M', '74.3M', '3.1M', '94%'],
+      [['51.2M', 71.40, 100], ['22.6M', 29.10, 40.8], ['10.3M', 12.30, 17.2]],
+      [['44.1M', 76.20, 100], ['22.6M', 29.10, 38.2], ['17.4M', 7.50, 9.8]]],
+    ['Last 30 days', '312M', 438.20, ['15.2M', '9.8M', '276M', '11.4M', '95%'],
+      [['198M', 277.10, 100], ['81M', 104.60, 37.7], ['33M', 56.50, 20.4]],
+      [['171M', 296.40, 100], ['81M', 104.60, 35.3], ['60M', 37.20, 12.6]]],
+  ];
+  const cost = document.getElementById('hero-cost');
+  const k = key => cost.querySelector(`[data-k="${key}"]`);
+  const setMoney = (el, v, from) => { el.dataset.count = v; reduce ? el.textContent = '$' + v.toFixed(2) : countUp(el, from, 700); };
+  const rowSet = (row, [tok, usd, w]) => {
+    row.querySelector('[data-tok]').textContent = tok;
+    const b = row.querySelector('b'); setMoney(b, usd, +b.dataset.count);
+    row.querySelector('.pp-fill').style.setProperty('--w', w + '%');
+  };
+  const setPeriod = segInit(document.getElementById('hero-period'), i => {
+    const [title, tok, total, tiles, agents, models] = PERIODS[i];
+    k('title').textContent = title; k('tok').textContent = tok + ' tokens';
+    tiles.forEach((t, j) => k('t' + j).textContent = t);
+    setMoney(k('total'), total, +k('total').dataset.count);
+    agents.forEach((a, j) => rowSet(k('a' + j), a));
+    models.forEach((m, j) => rowSet(k('m' + j), m));
+  });
+
+  let heroVisible = false, heroSeen = false;
+  new IntersectionObserver(entries => {
+    for (const e of entries) {
+      heroVisible = e.isIntersecting;
+      if (heroVisible && !heroSeen) {
+        heroSeen = true;
+        fitStack();
+        // .hero-stage is still fading in (320ms delay); start the settle + count-ups once it's visible
+        setTimeout(() => {
+          hero.classList.add('in');
+          if (!reduce) setTimeout(() => hero.querySelectorAll('.pp-grp.on [data-count], #hero-cost [data-count]').forEach(el => countUp(el)), 200);
+          setTimeout(() => hero.classList.add('settled'), 1500);
+        }, reduce ? 0 : 320);
+      }
+    }
+  }, { threshold: 0.25 }).observe(hero);
+
+  if (!reduce) {
+    // Cycle Today → 7d → 30d every 4s while on screen, until the visitor takes over.
+    const period = document.getElementById('hero-period');
+    let p = 0, cycles = 0;
+    const cyc = setInterval(() => {
+      if (!heroVisible || !heroSeen || period.dataset.user || !heroIdle()) return;
+      setPeriod(p = (p + 1) % PERIODS.length);
+      if (++cycles >= PERIODS.length * 2) clearInterval(cyc); // two full rounds, ends back on Today
+    }, 4000);
+  }
+
+  // latest version + direct installer link from GitHub API; falls back to releases page
+  fetch('https://api.github.com/repos/antoniosumak/agent-usage-tray/releases/latest')
+    .then(r => r.ok ? r.json() : null)
+    .then(rel => {
+      if (!rel) return;
+      const exe = (rel.assets || []).find(a => a.name.endsWith('.exe'));
+      // "v0.1.4 · 34 MB · Aug 12, 2026" — version, size and date in one glance
+      const facts = [
+        rel.tag_name,
+        exe && `${Math.round(exe.size / 1048576)} MB`,
+        rel.published_at && new Date(rel.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      ].filter(Boolean);
+      document.getElementById('term-ver').textContent = rel.tag_name.replace(/^v/, ''); // terminal mock tracks the real release
+      if (facts.length) document.getElementById('dl-version').textContent = facts.join(' · ');
+      if (exe) for (const id of ['dl-btn', 'dl-btn-2'])
+        document.getElementById(id).href = exe.browser_download_url;
+    })
+    .catch(() => {});
+</script>
+
+</body>
+</html>

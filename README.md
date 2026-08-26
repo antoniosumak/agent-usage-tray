@@ -32,7 +32,7 @@ computer.
 
 | Popup (dark) | Settings | Widget |
 | --- | --- | --- |
-| <img src="docs/screenshots/popup-dark.png" alt="The popup in the dark theme." width="260"> | <img src="docs/screenshots/settings.png" alt="The settings view. It shows the refresh interval, the warning threshold, the startup option, and the section toggles." width="260"> | <img src="docs/screenshots/widget.png" alt="The floating desktop widget. It shows two quota bars." width="260"> |
+| <img src="docs/screenshots/popup-dark.png" alt="The popup in the dark theme." width="260"> | <img src="docs/screenshots/settings-light.png" alt="The settings view. It shows the refresh interval, the warning threshold, the startup option, and the section toggles." width="260"> | <img src="docs/screenshots/widget.png" alt="The floating desktop widget. It shows two quota bars." width="260"> |
 
 ## How it works
 
