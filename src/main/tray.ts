@@ -204,22 +204,24 @@ export const MENU_BAR_W = 124;
 export const MENU_BAR_H = 22;
 
 export function createMenuBarRenderer(tray: Tray): BrowserWindow {
+  // A hidden offscreen window paints at 1x regardless of the display, which
+  // the menu bar then upscales (blurry on Retina). Render the page zoomed to
+  // the display's scale into a proportionally larger surface, then tag the
+  // bitmap with that scale so it shows at 124 DIP.
+  const sf = screen.getPrimaryDisplay().scaleFactor || 1;
   const off = new BrowserWindow({
     show: false,
-    width: MENU_BAR_W,
-    height: MENU_BAR_H,
+    width: Math.round(MENU_BAR_W * sf),
+    height: Math.round(MENU_BAR_H * sf),
     transparent: true,
     frame: false,
-    webPreferences: { offscreen: true, preload: path.join(__dirname, "preload.js") },
+    webPreferences: { offscreen: true, zoomFactor: sf, preload: path.join(__dirname, "preload.js") },
   });
   off.loadFile(path.join(__dirname, "widget.html"));
   off.webContents.setFrameRate(2);
   off.webContents.on("paint", (_e, _dirty, image) => {
     if (tray.isDestroyed()) return;
-    // Retina: if the frame arrives as raw 2x pixels flagged 1x, re-tag it so the
-    // menu bar shows it at 124 DIP instead of 248.
     const { width, height } = image.getSize();
-    const sf = width / MENU_BAR_W;
     tray.setImage(
       sf > 1
         ? nativeImage.createFromBitmap(image.toBitmap(), { width, height, scaleFactor: sf })
