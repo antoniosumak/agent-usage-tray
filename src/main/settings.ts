@@ -89,6 +89,6 @@ export function saveSettings(s: Settings): void {
 
 export function applyLoginItem(s: Settings): void {
   // Portable exe re-extracts itself; register the real file, not the temp copy.
-  const exe = process.env.PORTABLE_EXECUTABLE_FILE;
+  const exe = process.platform === "win32" ? process.env.PORTABLE_EXECUTABLE_FILE : undefined;
   app.setLoginItemSettings({ openAtLogin: s.launchAtStartup, ...(exe ? { path: exe } : {}) });
 }

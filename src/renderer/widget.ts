@@ -35,6 +35,9 @@ function selectedProvider(s: any): string {
   return want && provs.includes(want) ? want : provs[0] ?? "anthropic";
 }
 
+// macOS menu bar variant of the same markup (see body.mac rules in widget.html)
+if (navigator.platform.startsWith("Mac")) document.body.classList.add("mac");
+
 let last: any = null;
 function render(s: any): void {
   last = s;
@@ -55,11 +58,13 @@ function render(s: any): void {
     if (bucket) {
       const p = Math.min(Math.max(bucket.percent, 0), 100);
       fill.style.width = `${p}%`;
+      fill.dataset.lvl = p < 60 ? "ok" : p < 85 ? "warn" : "hot"; // colors only under body.mac
       track.setAttribute("aria-valuenow", String(Math.round(bucket.percent)));
       pct.textContent = `${Math.round(bucket.percent)}%`;
       reset.textContent = resetIn(bucket.resetsAt);
     } else {
       fill.style.width = "0%";
+      delete fill.dataset.lvl;
       track.removeAttribute("aria-valuenow");
       pct.textContent = "–";
       reset.textContent = "";

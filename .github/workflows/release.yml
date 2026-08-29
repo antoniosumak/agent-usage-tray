@@ -9,7 +9,10 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,11 +20,24 @@ jobs:
           node-version: 20
       - run: npm ci
       - run: npm run build
-      - run: npx electron-builder --win nsis --publish always
+      # electron-builder uploads to a draft (reliable for the large installer);
+      # the publish job flips it live only after every asset has finished uploading.
+      - if: runner.os == 'Windows'
+        run: npx electron-builder --win nsis --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # electron-builder uploads to a draft (reliable for the large installer);
-      # flip it live only after every asset has finished uploading.
+      - if: runner.os == 'macOS'
+        run: npx electron-builder --mac --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # unsigned build: never look for a signing identity
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
       - run: gh release edit ${{ github.ref_name }} --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}

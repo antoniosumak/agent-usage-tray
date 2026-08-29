@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agent Usage — Live Claude quotas &amp; agent cost tracking for Windows</title>
-<meta name="description" content="A Windows tray app that shows your live Claude quotas and tracks tokens and cost across Claude Code, Codex, and Cursor. Everything stays on your machine.">
+<title>Agent Usage — Live Claude quotas &amp; agent cost tracking for Windows &amp; macOS</title>
+<meta name="description" content="A tray app for Windows &amp; macOS that shows your live Claude quotas and tracks tokens and cost across Claude Code, Codex, and Cursor. Everything stays on your machine.">
 <meta name="theme-color" content="#FAFAFA">
 <meta property="og:title" content="Agent Usage">
-<meta property="og:description" content="Live Claude quotas and cross-agent cost tracking in your Windows tray.">
+<meta property="og:description" content="Live Claude quotas and cross-agent cost tracking in your tray or menu bar. Windows &amp; macOS.">
 <meta property="og:image" content="https://antoniosumak.github.io/agent-usage-tray/screenshots/popup-light.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111111'/%3E%3Cpath d='M8 20l5-8 4 5 3-4 4 7' stroke='%23ffffff' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -149,6 +149,10 @@
   }
   .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
   .cta-note { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; font-weight: 500; color: var(--ink-400); }
+  /* "Also available for …" under the primary download button */
+  .cta-alt { margin: -6px 0 16px; font-size: 13px; font-weight: 500; color: var(--ink-400); }
+  .cta-alt a { color: var(--ink-600); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(0,0,0,.25); transition: text-decoration-color .15s, color .15s; }
+  .cta-alt a:hover { color: var(--ink-900); text-decoration-color: var(--ink-900); }
 
   /* hero stage: popup in light perspective, cropped by the section's bottom rule */
   .hero-stage {
@@ -277,6 +281,7 @@
   .dl-card { text-align: center; }
   .dl-card .section-sub { margin: 0 auto 30px; }
   .dl-card .cta-row { justify-content: center; margin-bottom: 26px; }
+  .dl-card .cta-alt { margin: -10px 0 22px; }
   /* one scan line of facts; same voice as the hero's .cta-note */
   .dl-facts {
     list-style: none; display: flex; flex-wrap: wrap; justify-content: center;
@@ -481,17 +486,18 @@
     <div class="hero-copy">
       <div class="pill hero-enter" style="--delay: 0ms"><span class="tag">New</span>Codex quotas alongside Claude</div>
       <h1 class="hero-enter" style="--delay: 80ms">Know what your agents burn.</h1>
-      <p class="sub hero-enter" style="--delay: 160ms">Live Claude quotas. Tokens and dollars per agent, model, tool, and project. One click from your Windows taskbar, zero cloud.</p>
+      <p class="sub hero-enter" style="--delay: 160ms">Live Claude quotas. Tokens and dollars per agent, model, tool, and project. One click from your taskbar or menu bar, zero cloud.</p>
       <div class="cta-row hero-enter" style="--delay: 240ms">
         <a class="btn btn-primary btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" id="dl-btn" data-umami-event="download" data-umami-event-location="hero">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2.9 7.2 2v6H1V2.9ZM8 1.9 15 1v7H8V1.9ZM1 8.8h6.2v6L1 13.9V8.8ZM8 8.8h7V15l-7-.9V8.8Z"/></svg>
-          Download for Windows
+          <span class="dl-label">Download for Windows</span>
         </a>
         <a class="btn btn-ghost btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray" data-umami-event="github" data-umami-event-location="hero">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4 0 .5-.2.5-.4v-1.5c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.3 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-4 0-.9.3-1.6.8-2.1 0-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.5.8 1.2.8 2.1 0 3.1-1.9 3.8-3.6 4 .3.2.5.7.5 1.4v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .2Z"/></svg>
           View on GitHub
         </a>
       </div>
+      <p class="cta-alt hero-enter" style="--delay: 280ms">Also available for <span class="dl-other">macOS</span> · <a class="dl-alt" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" data-umami-event="download" data-umami-event-location="hero-alt">All downloads</a></p>
       <p class="cta-note hero-enter" style="--delay: 300ms" id="dl-note"><span>Free · MIT</span><span>No account</span><span>Claude Code · Codex · Cursor</span></p>
     </div>
 
@@ -692,9 +698,9 @@
 <section>
   <div class="wrap widget-strip">
     <div class="reveal">
-      <div class="kicker">Desktop widget</div>
+      <div class="kicker">Widget &amp; menu bar</div>
       <h2>Quotas without clicking anything.</h2>
-      <p class="section-sub">An optional always-on-top widget floats near your tray with the session and weekly bars. Plus a one-time Windows notification when you cross a threshold you set.</p>
+      <p class="section-sub">On Windows, an optional always-on-top widget floats near your tray with the session and weekly bars. On macOS, the menu bar item shows the same two bars. Plus a one-time system notification when you cross a threshold you set.</p>
       <ul class="checklist">
         <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Always visible, never in the way</li>
         <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Configurable warning threshold with native notifications</li>
@@ -717,12 +723,13 @@
     <div class="bento reveal-group">
       <div class="card span-3">
         <h3>Your existing logins</h3>
-        <p>Quota data comes from the OAuth tokens the Claude and Codex CLIs already keep on disk. Nothing new to sign into, nothing to paste in.</p>
+        <p>Quota data comes from the OAuth tokens the Claude and Codex CLIs already keep on disk. On macOS the Claude token lives in the Keychain, read via the <span class="pp-mono">security</span> CLI after one “Always Allow” prompt. Nothing new to sign into, nothing to paste in, nothing leaves the machine.</p>
         <div class="shot">
-          <div class="pp" role="img" aria-label="Credential files the app reads: Claude and Codex, both read only.">
+          <div class="pp" role="img" aria-label="Credentials the app reads: the Claude credentials file or macOS Keychain entry, and the Codex auth file, all read only.">
             <div class="pp-label">Credentials</div>
             <div class="pp-list">
               <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-claude"/></svg><span class="pp-mono">~/.claude/<wbr>.credentials.json</span></span><span class="pp-tag">read only</span></div>
+              <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-claude"/></svg><span class="pp-mono">Keychain · Claude Code-credentials</span></span><span class="pp-tag">read only</span></div>
               <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-openai"/></svg><span class="pp-mono">~/.codex/<wbr>auth.json</span></span><span class="pp-tag">read only</span></div>
               <div><span class="pp-name pp-muted">New account or API key</span><span class="pp-tag off">none</span></div>
             </div>
@@ -775,9 +782,9 @@
         <h3>Open source</h3>
         <p>MIT licensed. Read every line, or build the installer yourself.</p>
         <div class="shot">
-          <div class="pp pp-term" role="img" aria-label="Terminal building the installer from source.">
+          <div class="pp pp-term" role="img" aria-label="Terminal building the Windows installer and the macOS disk image from source.">
             <div class="pp-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-            <div class="pp-mono"><span>$</span> git clone <b>agent-usage-tray</b><br><span>$</span> npm install<br><span>$</span> npm run dist<br><i>✓</i> release/Agent Usage <data id="term-ver">0.1.4</data>.exe</div>
+            <div class="pp-mono"><span>$</span> git clone <b>agent-usage-tray</b><br><span>$</span> npm install<br><span>$</span> npm run dist<br><i>✓</i> release/Agent Usage <data class="term-ver">0.1.4</data>.exe<br><span>$</span> npm run dist:mac<br><i>✓</i> release/Agent Usage-<data class="term-ver">0.1.4</data>-arm64.dmg</div>
           </div>
         </div>
       </div>
@@ -791,26 +798,28 @@
       <div class="reveal">
         <div class="kicker">Download</div>
         <h2>Up and running in 30 seconds.</h2>
-        <p class="section-sub">One installer, no admin rights. Updates arrive in the tray.</p>
+        <p class="section-sub">One download per platform, no admin rights. Windows updates itself from the tray; macOS shows a Download link when a new version is out.</p>
       </div>
       <div class="cta-row reveal" style="--delay: 80ms">
         <a class="btn btn-primary btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" id="dl-btn-2" data-umami-event="download" data-umami-event-location="footer-cta">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2.9 7.2 2v6H1V2.9ZM8 1.9 15 1v7H8V1.9ZM1 8.8h6.2v6L1 13.9V8.8ZM8 8.8h7V15l-7-.9V8.8Z"/></svg>
-          Download for Windows
+          <span class="dl-label">Download for Windows</span>
         </a>
         <a class="btn btn-ghost btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray/releases" data-umami-event="releases">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4 0 .5-.2.5-.4v-1.5c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.3 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-4 0-.9.3-1.6.8-2.1 0-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.5.8 1.2.8 2.1 0 3.1-1.9 3.8-3.6 4 .3.2.5.7.5 1.4v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .2Z"/></svg>
           All releases
         </a>
       </div>
+      <p class="cta-alt reveal" style="--delay: 120ms">Also available for <span class="dl-other">macOS</span> · <a class="dl-alt" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" data-umami-event="download" data-umami-event-location="footer-alt">All downloads</a></p>
       <ul class="dl-facts reveal" style="--delay: 160ms" aria-label="Release details">
         <li id="dl-version">Latest release</li>
         <li>Windows 10 / 11 · x64</li>
+        <li>macOS 12+ · Apple Silicon &amp; Intel (unsigned — Open Anyway)</li>
         <li>Per-user install, no admin</li>
-        <li>Auto-updates from GitHub</li>
+        <li>Auto-updates from GitHub (Windows)</li>
         <li>MIT · <a href="https://github.com/antoniosumak/agent-usage-tray" data-umami-event="github" data-umami-event-location="download-facts">Source on GitHub</a></li>
       </ul>
-      <p class="dl-note reveal" style="--delay: 240ms">Unsigned build: SmartScreen shows “Unknown publisher”. Choose <span style="white-space: nowrap"><kbd>More info</kbd> → <kbd>Run anyway</kbd></span>, or <a href="https://github.com/antoniosumak/agent-usage-tray#build-from-source" data-umami-event="build-from-source">build from source</a>.</p>
+      <p class="dl-note reveal" style="--delay: 240ms">Unsigned build. Windows: SmartScreen shows “Unknown publisher”, choose <span style="white-space: nowrap"><kbd>More info</kbd> → <kbd>Run anyway</kbd></span>. macOS: Gatekeeper blocks the first launch, open <span style="white-space: nowrap"><kbd>System Settings</kbd> → <kbd>Privacy &amp; Security</kbd> → <kbd>Open Anyway</kbd></span>. Or <a href="https://github.com/antoniosumak/agent-usage-tray#build-from-source" data-umami-event="build-from-source">build from source</a>.</p>
     </div>
   </div>
 </section>
@@ -987,22 +996,34 @@
     }, 4000);
   }
 
-  // latest version + direct installer link from GitHub API; falls back to releases page
+  // platform-aware download buttons: Mac visitors get the arm64 .dmg, everyone else the .exe
+  const isMac = /Mac/i.test(navigator.platform) || /Macintosh|Mac OS X/.test(navigator.userAgent);
+  const ICON_MAC = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>';
+  const primaryBtns = ['dl-btn', 'dl-btn-2'].map(id => document.getElementById(id));
+  if (isMac) {
+    for (const btn of primaryBtns) btn.innerHTML = ICON_MAC + '<span class="dl-label">Download for macOS</span>';
+    for (const el of document.querySelectorAll('.dl-other')) el.textContent = 'Windows';
+  }
+
+  // latest version + direct asset links from GitHub API; falls back to releases page
   fetch('https://api.github.com/repos/antoniosumak/agent-usage-tray/releases/latest')
     .then(r => r.ok ? r.json() : null)
     .then(rel => {
       if (!rel) return;
-      const exe = (rel.assets || []).find(a => a.name.endsWith('.exe'));
+      const assets = rel.assets || [];
+      const exe = assets.find(a => a.name.endsWith('.exe'));
+      const dmg = assets.find(a => a.name.endsWith('arm64.dmg')) || assets.find(a => a.name.endsWith('.dmg'));
+      const primary = isMac ? dmg : exe, other = isMac ? exe : dmg;
       // "v0.1.4 · 34 MB · Aug 12, 2026" — version, size and date in one glance
       const facts = [
         rel.tag_name,
-        exe && `${Math.round(exe.size / 1048576)} MB`,
+        primary && `${Math.round(primary.size / 1048576)} MB`,
         rel.published_at && new Date(rel.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       ].filter(Boolean);
-      document.getElementById('term-ver').textContent = rel.tag_name.replace(/^v/, ''); // terminal mock tracks the real release
+      for (const el of document.querySelectorAll('.term-ver')) el.textContent = rel.tag_name.replace(/^v/, ''); // terminal mock tracks the real release
       if (facts.length) document.getElementById('dl-version').textContent = facts.join(' · ');
-      if (exe) for (const id of ['dl-btn', 'dl-btn-2'])
-        document.getElementById(id).href = exe.browser_download_url;
+      if (primary) for (const btn of primaryBtns) btn.href = primary.browser_download_url;
+      if (other) for (const a of document.querySelectorAll('.dl-alt')) a.href = other.browser_download_url;
     })
     .catch(() => {});
 </script>

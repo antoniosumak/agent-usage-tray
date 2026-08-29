@@ -134,7 +134,7 @@ interface Snapshot {
   blocks: BlockState;
   burn: BurnState;
   settings: Settings;
-  update: { version: string; status: "downloading" | "downloaded"; percent?: number } | null;
+  update: { version: string; status: "available" | "downloading" | "downloaded"; percent?: number } | null;
   range: Range;
   version: string;
 }
@@ -916,6 +916,8 @@ function render(): void {
     ? ""
     : u.status === "downloaded"
       ? `<button class="text-[11px] font-medium text-[#005bd3] dark:text-blue-400 hover:underline cursor-pointer px-1.5 py-2 -mx-1.5 -my-2 rounded-md active:scale-[0.96] transition-transform">Restart to update · v${esc(u.version)}</button>`
+      : u.status === "available" // unsigned mac build: manual download
+        ? `<button class="text-[11px] font-medium text-[#005bd3] dark:text-blue-400 hover:underline cursor-pointer px-1.5 py-2 -mx-1.5 -my-2 rounded-md active:scale-[0.96] transition-transform">Download v${esc(u.version)}</button>`
       : `<span class="text-[11px] text-[#6f6f6f] dark:text-neutral-400 px-1.5 py-2">Downloading update… ${u.percent ?? 0}%</span>`;
   updateScrollFades();
 }

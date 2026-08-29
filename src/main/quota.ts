@@ -1,6 +1,7 @@
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
+import { execFile } from "child_process";
 
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const MAX_BACKOFF_MS = 900_000;
@@ -44,13 +45,29 @@ export interface QuotaProvider {
 // read error just means "no token right now" (file may be mid-rewrite).
 async function readToken(): Promise<string | null> {
   const dir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+  let raw: string | null = null;
   try {
-    const raw = await fs.readFile(path.join(dir, ".credentials.json"), "utf8");
+    raw = await fs.readFile(path.join(dir, ".credentials.json"), "utf8");
+  } catch {
+    // macOS Claude Code keeps the blob in Keychain (same JSON shape); first run
+    // prompts once — "Always Allow". Missing item exits 44 → no token.
+    if (process.platform === "darwin") raw = await readKeychain("Claude Code-credentials");
+  }
+  if (!raw) return null;
+  try {
     const token = JSON.parse(raw)?.claudeAiOauth?.accessToken;
     return typeof token === "string" && token.length > 0 ? token : null;
   } catch {
     return null;
   }
+}
+
+function readKeychain(service: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    execFile("security", ["find-generic-password", "-s", service, "-w"], (err, out) => {
+      resolve(err ? null : out.trim() || null);
+    });
+  });
 }
 
 function fetchUsage(token: string): Promise<Response> {
@@ -234,7 +251,7 @@ export const codexProvider: QuotaProvider = {
         Authorization: `Bearer ${auth.accessToken}`,
         "Content-Type": "application/json",
         originator: "codex_cli_rs",
-        "User-Agent": "codex_cli_rs/0.0.0 (Windows 11) x86_64",
+        "User-Agent": `codex_cli_rs/0.0.0 (${process.platform === "darwin" ? "Mac OS" : "Windows 11"}) x86_64`,
         ...(auth.accountId ? { "chatgpt-account-id": auth.accountId } : {}),
       },
     });
