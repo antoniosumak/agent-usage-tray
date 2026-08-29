@@ -29,8 +29,14 @@ jobs:
           else
             git tag "$tag"
             git push origin "$tag"
+            # Create the draft up front so both matrix builds upload into this one
+            # release. Left to electron-builder, the two jobs race and each makes
+            # its own draft; publish then flips only one of them live.
+            gh release create "$tag" --draft --title "$tag" --notes "" --verify-tag
             echo "new=true" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
     needs: tag
