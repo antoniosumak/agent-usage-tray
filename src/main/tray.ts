@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import * as path from "path";
 import { app, BrowserWindow, Menu, nativeImage, screen, Tray } from "electron";
 import type { QuotaState } from "./quota";
 
@@ -6,6 +7,8 @@ import type { QuotaState } from "./quota";
 // color-coded digits above a thin weekly bar. In the overflow flyout: session
 // percentage as white digits on a solid threshold-colored badge. Null renders
 // gray.
+const isMac = process.platform === "darwin";
+
 function barColor(percent: number): [number, number, number] {
   return percent < 60 ? [34, 197, 94] : percent < 85 ? [234, 179, 8] : [239, 68, 68];
 }
@@ -140,10 +143,12 @@ export function updateTray(tray: Tray, quota: QuotaState): void {
   const ok = quota.status === "ok";
   const sessionPct = ok && session ? session.percent : null;
   const weeklyPct = ok && weekly ? weekly.percent : null;
-  void isPinned().then((pinned) => {
-    if (tray.isDestroyed()) return;
-    tray.setImage(pinned ? createBarsIcon(sessionPct, weeklyPct) : createBadgeIcon(sessionPct));
-  });
+  // darwin: the image comes from the offscreen widget.html renderer (createMenuBarRenderer)
+  if (!isMac)
+    void isPinned().then((pinned) => {
+      if (tray.isDestroyed()) return;
+      tray.setImage(pinned ? createBarsIcon(sessionPct, weeklyPct) : createBadgeIcon(sessionPct));
+    });
   if (quota.status === "ok" && quota.buckets.length > 0) {
     const parts: string[] = [];
     if (session) parts.push(`Session ${session.percent}%`);
@@ -159,14 +164,18 @@ export function popupPosition(trayBounds: Electron.Rectangle, win: BrowserWindow
   const wa = screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y }).workArea;
   let x = Math.round(trayBounds.x + trayBounds.width / 2 - width / 2);
   x = Math.min(Math.max(x, wa.x + 8), wa.x + wa.width - width - 8);
-  const y = wa.y + wa.height - height - 8;
+  // mac menu bar sits on top → popup hangs below it; Windows taskbar is at the bottom
+  const y = isMac ? trayBounds.y + trayBounds.height + 4 : wa.y + wa.height - height - 8;
   return { x, y };
 }
 
 export function createTray(win: BrowserWindow): Tray {
   const tray = new Tray(createBadgeIcon(null));
   tray.setToolTip("Agent Usage");
-  tray.setContextMenu(Menu.buildFromTemplate([{ label: "Quit", click: () => app.quit() }]));
+  const menu = Menu.buildFromTemplate([{ label: "Quit", click: () => app.quit() }]);
+  // macOS opens a set context menu on *left* click too, which would swallow the popup toggle
+  if (isMac) tray.on("right-click", () => tray.popUpContextMenu(menu));
+  else tray.setContextMenu(menu);
 
   // Clicking the tray blurs (and hides) the popup before the click event
   // arrives, so a plain isVisible() check would instantly re-show it.
@@ -185,4 +194,39 @@ export function createTray(win: BrowserWindow): Tray {
   });
 
   return tray;
+}
+
+// macOS menu bar item: widget.html rendered offscreen, every repaint becomes the
+// tray image (two rows: 5h / 7d). `paint` only fires on content change, so the
+// frame-rate cap is not a poll. Never shown — main.ts feeds it state exactly like
+// the Windows taskbar widget.
+export const MENU_BAR_W = 124;
+export const MENU_BAR_H = 22;
+
+export function createMenuBarRenderer(tray: Tray): BrowserWindow {
+  // A hidden offscreen window paints at 1x regardless of the display, which
+  // the menu bar then upscales (blurry on Retina). Render the page zoomed to
+  // the display's scale into a proportionally larger surface, then tag the
+  // bitmap with that scale so it shows at 124 DIP.
+  const sf = screen.getPrimaryDisplay().scaleFactor || 1;
+  const off = new BrowserWindow({
+    show: false,
+    width: Math.round(MENU_BAR_W * sf),
+    height: Math.round(MENU_BAR_H * sf),
+    transparent: true,
+    frame: false,
+    webPreferences: { offscreen: true, zoomFactor: sf, preload: path.join(__dirname, "preload.js") },
+  });
+  off.loadFile(path.join(__dirname, "widget.html"));
+  off.webContents.setFrameRate(2);
+  off.webContents.on("paint", (_e, _dirty, image) => {
+    if (tray.isDestroyed()) return;
+    const { width, height } = image.getSize();
+    tray.setImage(
+      sf > 1
+        ? nativeImage.createFromBitmap(image.toBitmap(), { width, height, scaleFactor: sf })
+        : image,
+    );
+  });
+  return off;
 }

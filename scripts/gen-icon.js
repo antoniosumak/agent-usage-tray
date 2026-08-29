@@ -1,5 +1,6 @@
-// Generates build/icon.ico: the tray quota-ring design at 256px (75% green
-// arc), rendered via nativeImage and wrapped as a single PNG-format ICO entry.
+// Generates build/icon.ico (256px, single PNG-format ICO entry) and
+// build/icon.png (1024px; electron-builder converts it to .icns for mac):
+// the tray quota-ring design (75% green arc), rendered via nativeImage.
 // Run with: npx electron scripts/gen-icon.js
 const { app, nativeImage } = require("electron");
 const fs = require("fs");
@@ -49,8 +50,12 @@ function pngToIco(png, size) {
   return Buffer.concat([header, png]);
 }
 
-const out = path.join(__dirname, "..", "build", "icon.ico");
-fs.mkdirSync(path.dirname(out), { recursive: true });
-fs.writeFileSync(out, pngToIco(ringPng(256), 256));
-console.log(`wrote ${out}`);
+const buildDir = path.join(__dirname, "..", "build");
+fs.mkdirSync(buildDir, { recursive: true });
+const ico = path.join(buildDir, "icon.ico");
+fs.writeFileSync(ico, pngToIco(ringPng(256), 256));
+console.log(`wrote ${ico}`);
+const png = path.join(buildDir, "icon.png");
+fs.writeFileSync(png, ringPng(1024));
+console.log(`wrote ${png}`);
 app.quit();

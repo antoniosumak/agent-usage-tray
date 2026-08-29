@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agent Usage — Live Claude quotas &amp; agent cost tracking for Windows</title>
-<meta name="description" content="A Windows tray app that shows your live Claude quotas and tracks tokens and cost across Claude Code, Codex, and Cursor. Everything stays on your machine.">
+<title>Agent Usage — Live Claude, Codex, Copilot, Cursor &amp; Gemini quotas and agent cost tracking for Windows &amp; macOS</title>
+<meta name="description" content="A tray app for Windows &amp; macOS that shows your live Claude, Codex, Copilot, Cursor and Gemini CLI quotas and tracks tokens and cost across Claude Code, Codex, and Cursor. Everything stays on your machine.">
 <meta name="theme-color" content="#FAFAFA">
 <meta property="og:title" content="Agent Usage">
-<meta property="og:description" content="Live Claude quotas and cross-agent cost tracking in your Windows tray.">
+<meta property="og:description" content="Live Claude, Codex, Copilot, Cursor and Gemini quotas and cross-agent cost tracking in your tray or menu bar. Windows &amp; macOS.">
 <meta property="og:image" content="https://antoniosumak.github.io/agent-usage-tray/screenshots/popup-light.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111111'/%3E%3Cpath d='M8 20l5-8 4 5 3-4 4 7' stroke='%23ffffff' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -149,6 +149,7 @@
   }
   .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
   .cta-note { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; font-weight: 500; color: var(--ink-400); }
+  /* "Also available for …" under the primary download button */
 
   /* hero stage: popup in light perspective, cropped by the section's bottom rule */
   .hero-stage {
@@ -276,25 +277,21 @@
   /* ---------- download: plain closing section ---------- */
   .dl-card { text-align: center; }
   .dl-card .section-sub { margin: 0 auto 30px; }
-  .dl-card .cta-row { justify-content: center; margin-bottom: 26px; }
-  /* one scan line of facts; same voice as the hero's .cta-note */
-  .dl-facts {
-    list-style: none; display: flex; flex-wrap: wrap; justify-content: center;
-    gap: 8px 24px; font-size: 13px; font-weight: 500; color: var(--ink-400);
-    font-variant-numeric: tabular-nums;
-  }
-  .dl-facts li { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-  .dl-facts li::before { content: ""; width: 5px; height: 5px; border-radius: 99px; background: var(--green); flex-shrink: 0; }
-  .dl-facts #dl-version { color: var(--ink-700); font-weight: 600; }
-  .dl-facts a { color: var(--ink-600); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(0,0,0,.25); transition: text-decoration-color .15s, color .15s; }
-  .dl-facts a:hover { color: var(--ink-900); text-decoration-color: var(--ink-900); }
-  .dl-note {
-    margin: 22px auto 0; max-width: 560px;
-    font-size: 13px; line-height: 1.55; color: var(--ink-500); text-wrap: pretty;
-  }
-  .dl-note kbd { font: inherit; font-weight: 600; color: var(--ink-700); white-space: nowrap; }
-  .dl-note a { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(0,0,0,.25); transition: text-decoration-color .15s; }
-  .dl-note a:hover { text-decoration-color: var(--ink-900); }
+  /* one card per platform: button, file, requirements, first-launch steps */
+  .dl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 760px; margin: 0 auto 28px; text-align: left; }
+  .dl-plat { padding: 26px; gap: 14px; }
+  .dl-plat-head { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.015em; color: var(--ink-950); }
+  .dl-plat-head svg { color: var(--ink-500); }
+  .dl-plat .btn { width: 100%; min-width: 0; }
+  .dl-meta { margin: -6px 0 0; font-size: 12.5px; color: var(--ink-400); font-variant-numeric: tabular-nums; text-align: center; }
+  .dl-list { list-style: none; display: grid; gap: 10px; font-size: 13.5px; line-height: 1.5; color: var(--ink-500); text-wrap: pretty; }
+  .dl-list li { position: relative; padding-left: 15px; }
+  .dl-list li::before { content: ""; position: absolute; left: 0; top: 7px; width: 5px; height: 5px; border-radius: 99px; background: var(--green); }
+  .dl-list kbd { font: inherit; font-weight: 600; color: var(--ink-700); white-space: nowrap; }
+  .dl-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; font-size: 13px; font-weight: 500; color: var(--ink-400); font-variant-numeric: tabular-nums; }
+  .dl-foot #dl-version { color: var(--ink-700); font-weight: 600; }
+  .dl-foot a { color: var(--ink-600); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(0,0,0,.25); transition: text-decoration-color .15s, color .15s; }
+  .dl-foot a:hover { color: var(--ink-900); text-decoration-color: var(--ink-900); }
 
   /* ---------- footer ---------- */
   footer { border-top: 1px solid var(--line-150); padding: 36px 0; }
@@ -429,8 +426,7 @@
   @media (max-width: 860px) {
     .span-2, .span-3 { grid-column: span 3; } /* 2-up until phones */
     .widget-strip { grid-template-columns: 1fr; gap: 36px; }
-    .dl-facts { flex-direction: column; align-items: flex-start; gap: 10px; width: max-content; max-width: 100%; margin: 0 auto; }
-    .dl-facts li { white-space: normal; text-align: left; }
+    .dl-grid { grid-template-columns: 1fr; }
     section { padding: 64px 0; }
     .hero-inner { grid-template-columns: 1fr; gap: 40px; padding: 56px 24px 0; }
     .hero-copy { align-items: center; text-align: center; padding-bottom: 0; }
@@ -455,7 +451,9 @@
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-claude" viewBox="0 0 256 257"><path fill="#D97757" d="m50.228 170.321 50.357-28.257.843-2.463-.843-1.361h-2.462l-8.426-.518-28.775-.778-24.952-1.037-24.175-1.296-6.092-1.297L0 125.796l.583-3.759 5.12-3.434 7.324.648 16.202 1.101 24.304 1.685 17.629 1.037 26.118 2.722h4.148l.583-1.685-1.426-1.037-1.101-1.037-25.147-17.045-27.22-18.017-14.258-10.37-7.713-5.25-3.888-4.925-1.685-10.758 7-7.713 9.397.649 2.398.648 9.527 7.323 20.35 15.75L94.817 91.9l3.889 3.24 1.555-1.102.195-.777-1.75-2.917-14.453-26.118-15.425-26.572-6.87-11.018-1.814-6.61c-.648-2.723-1.102-4.991-1.102-7.778l7.972-10.823L71.42 0 82.05 1.426l4.472 3.888 6.61 15.101 10.694 23.786 16.591 32.34 4.861 9.592 2.592 8.879.973 2.722h1.685v-1.556l1.36-18.211 2.528-22.36 2.463-28.776.843-8.1 4.018-9.722 7.971-5.25 6.222 2.981 5.12 7.324-.713 4.73-3.046 19.768-5.962 30.98-3.889 20.739h2.268l2.593-2.593 10.499-13.934 17.628-22.036 7.778-8.749 9.073-9.657 5.833-4.601h11.018l8.1 12.055-3.628 12.443-11.342 14.388-9.398 12.184-13.48 18.147-8.426 14.518.778 1.166 2.01-.194 30.46-6.481 16.462-2.982 19.637-3.37 8.88 4.148.971 4.213-3.5 8.62-20.998 5.184-24.628 4.926-36.682 8.685-.454.324.519.648 16.526 1.555 7.065.389h17.304l32.21 2.398 8.426 5.574 5.055 6.805-.843 5.184-12.962 6.611-17.498-4.148-40.83-9.721-14-3.5h-1.944v1.167l11.666 11.406 21.387 19.314 26.767 24.887 1.36 6.157-3.434 4.86-3.63-.518-23.526-17.693-9.073-7.972-20.545-17.304h-1.36v1.814l4.73 6.935 25.017 37.59 1.296 11.536-1.814 3.76-6.481 2.268-7.13-1.297-14.647-20.544-15.1-23.138-12.185-20.739-1.49.843-7.194 77.448-3.37 3.953-7.778 2.981-6.48-4.925-3.436-7.972 3.435-15.749 4.148-20.544 3.37-16.333 3.046-20.285 1.815-6.74-.13-.454-1.49.194-15.295 20.999-23.267 31.433-18.406 19.702-4.407 1.75-7.648-3.954.713-7.064 4.277-6.286 25.47-32.405 15.36-20.092 9.917-11.6-.065-1.686h-.583L44.07 198.125l-12.055 1.555-5.185-4.86.648-7.972 2.463-2.593 20.35-13.999-.064.065Z"/></symbol>
   <symbol id="i-openai" viewBox="0 0 256 260"><path fill="currentColor" d="M239.184 106.203a64.716 64.716 0 0 0-5.576-53.103C219.452 28.459 191 15.784 163.213 21.74A65.586 65.586 0 0 0 52.096 45.22a64.716 64.716 0 0 0-43.23 31.36c-14.31 24.602-11.061 55.634 8.033 76.74a64.665 64.665 0 0 0 5.525 53.102c14.174 24.65 42.644 37.324 70.446 31.36a64.72 64.72 0 0 0 48.754 21.744c28.481.025 53.714-18.361 62.414-45.481a64.767 64.767 0 0 0 43.229-31.36c14.137-24.558 10.875-55.423-8.083-76.483Zm-97.56 136.338a48.397 48.397 0 0 1-31.105-11.255l1.535-.87 51.67-29.825a8.595 8.595 0 0 0 4.247-7.367v-72.85l21.845 12.636c.218.111.37.32.409.563v60.367c-.056 26.818-21.783 48.545-48.601 48.601Zm-104.466-44.61a48.345 48.345 0 0 1-5.781-32.589l1.534.921 51.722 29.826a8.339 8.339 0 0 0 8.441 0l63.181-36.425v25.221a.87.87 0 0 1-.358.665l-52.335 30.184c-23.257 13.398-52.97 5.431-66.404-17.803ZM23.549 85.38a48.499 48.499 0 0 1 25.58-21.333v61.39a8.288 8.288 0 0 0 4.195 7.316l62.874 36.272-21.845 12.636a.819.819 0 0 1-.767 0L41.353 151.53c-23.211-13.454-31.171-43.144-17.804-66.405v.256Zm179.466 41.695-63.08-36.63L161.73 77.86a.819.819 0 0 1 .768 0l52.233 30.184a48.6 48.6 0 0 1-7.316 87.635v-61.391a8.544 8.544 0 0 0-4.4-7.213Zm21.742-32.69-1.535-.922-51.619-30.081a8.39 8.39 0 0 0-8.492 0L99.98 99.808V74.587a.716.716 0 0 1 .307-.665l52.233-30.133a48.652 48.652 0 0 1 72.236 50.391v.205ZM88.061 139.097l-21.845-12.585a.87.87 0 0 1-.41-.614V65.685a48.652 48.652 0 0 1 79.757-37.346l-1.535.87-51.67 29.825a8.595 8.595 0 0 0-4.246 7.367l-.051 72.697Zm11.868-25.58 28.138-16.217 28.188 16.218v32.434l-28.086 16.218-28.188-16.218-.052-32.434Z"/></symbol>
+  <symbol id="i-copilot" viewBox="0 0 256 208"><path fill="currentColor" d="M205.3 31.4c14 14.8 20 35.2 22.5 63.6 6.6 0 12.8 1.5 17 7.2l7.8 10.6c2.2 3 3.4 6.6 3.4 10.4v28.7a12 12 0 0 1-4.8 9.5C215.9 187.2 172.3 208 128 208c-49 0-98.2-28.3-123.2-46.6a12 12 0 0 1-4.8-9.5v-28.7c0-3.8 1.2-7.4 3.4-10.5l7.8-10.5c4.2-5.7 10.4-7.2 17-7.2 2.5-28.4 8.4-48.8 22.5-63.6C77.3 3.2 112.6 0 127.6 0h.4c14.7 0 50.4 2.9 77.3 31.4ZM128 78.7c-3 0-6.5.2-10.3.6a27.1 27.1 0 0 1-6 12.1 45 45 0 0 1-32 13c-6.8 0-13.9-1.5-19.7-5.2-5.5 1.9-10.8 4.5-11.2 11-.5 12.2-.6 24.5-.6 36.8 0 6.1 0 12.3-.2 18.5 0 3.6 2.2 6.9 5.5 8.4C79.9 185.9 105 192 128 192s48-6 74.5-18.1a9.4 9.4 0 0 0 5.5-8.4c.3-18.4 0-37-.8-55.3-.4-6.6-5.7-9.1-11.2-11-5.8 3.7-13 5.1-19.7 5.1a45 45 0 0 1-32-12.9 27.1 27.1 0 0 1-6-12.1c-3.4-.4-6.9-.5-10.3-.6Zm-27 44c5.8 0 10.5 4.6 10.5 10.4v19.2a10.4 10.4 0 0 1-20.8 0V133c0-5.8 4.6-10.4 10.4-10.4Zm53.4 0c5.8 0 10.4 4.6 10.4 10.4v19.2a10.4 10.4 0 0 1-20.8 0V133c0-5.8 4.7-10.4 10.4-10.4Zm-73-94.4c-11.2 1.1-20.6 4.8-25.4 10-10.4 11.3-8.2 40.1-2.2 46.2A31.2 31.2 0 0 0 75 91.7c6.8 0 19.6-1.5 30.1-12.2 4.7-4.5 7.5-15.7 7.2-27-.3-9.1-2.9-16.7-6.7-19.9-4.2-3.6-13.6-5.2-24.2-4.3Zm69 4.3c-3.8 3.2-6.4 10.8-6.7 19.9-.3 11.3 2.5 22.5 7.2 27a41.7 41.7 0 0 0 30 12.2c8.9 0 17-2.9 21.3-7.2 6-6.1 8.2-34.9-2.2-46.3-4.8-5-14.2-8.8-25.4-9.9-10.6-1-20 .7-24.2 4.3ZM128 56c-2.6 0-5.6.2-9 .5.4 1.7.5 3.7.7 5.7 0 1.5 0 3-.2 4.5 3.2-.3 6-.3 8.5-.3 2.6 0 5.3 0 8.5.3-.2-1.6-.2-3-.2-4.5.2-2 .3-4 .7-5.7-3.4-.3-6.4-.5-9-.5Z"/></symbol>
   <symbol id="i-cursor" viewBox="0 0 466.73 532.09"><path fill="currentColor" d="M457.43,125.94L244.42,2.96c-6.84-3.95-15.28-3.95-22.12,0L9.3,125.94c-5.75,3.32-9.3,9.46-9.3,16.11v247.99c0,6.65,3.55,12.79,9.3,16.11l213.01,122.98c6.84,3.95,15.28,3.95,22.12,0l213.01-122.98c5.75-3.32,9.3-9.46,9.3-16.11v-247.99c0-6.65-3.55-12.79-9.3-16.11h-.01ZM444.05,151.99l-205.63,356.16c-1.39,2.4-5.06,1.42-5.06-1.36v-233.21c0-4.66-2.49-8.97-6.53-11.31L24.87,145.67c-2.4-1.39-1.42-5.06,1.36-5.06h411.26c5.84,0,9.49,6.33,6.57,11.39h-.01Z"/></symbol>
+  <symbol id="i-gemini" viewBox="0 0 296 298"><path fill="#3186FF" d="M141.201 4.886c2.282-6.17 11.042-6.071 13.184.148l5.985 17.37a184.004 184.004 0 0 0 111.257 113.049l19.304 6.997c6.143 2.227 6.156 10.91.02 13.155l-19.35 7.082a184.001 184.001 0 0 0-109.495 109.385l-7.573 20.629c-2.241 6.105-10.869 6.121-13.133.025l-7.908-21.296a184 184 0 0 0-109.02-108.658l-19.698-7.239c-6.102-2.243-6.118-10.867-.025-13.132l20.083-7.467A183.998 183.998 0 0 0 133.291 26.28l7.91-21.394Z"/></symbol>
   <symbol id="i-chev" viewBox="0 0 16 16"><path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 
@@ -479,17 +477,17 @@
   <div class="hero-glow" aria-hidden="true"></div>
   <div class="wrap hero-inner">
     <div class="hero-copy">
-      <div class="pill hero-enter" style="--delay: 0ms"><span class="tag">New</span>Codex quotas alongside Claude</div>
+      <div class="pill hero-enter" style="--delay: 0ms"><span class="tag">New</span>Copilot, Cursor &amp; Gemini quotas</div>
       <h1 class="hero-enter" style="--delay: 80ms">Know what your agents burn.</h1>
-      <p class="sub hero-enter" style="--delay: 160ms">Live Claude quotas. Tokens and dollars per agent, model, tool, and project. One click from your Windows taskbar, zero cloud.</p>
+      <p class="sub hero-enter" style="--delay: 160ms">Live Claude, Codex, Copilot, Cursor and Gemini quotas. Tokens and dollars per agent, model, tool, and project. One click from your taskbar or menu bar, zero cloud.</p>
       <div class="cta-row hero-enter" style="--delay: 240ms">
-        <a class="btn btn-primary btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" id="dl-btn" data-umami-event="download" data-umami-event-location="hero">
+        <a class="btn btn-primary btn-lg btn-icon dl-win" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" data-umami-event="download" data-umami-event-location="hero" data-umami-event-platform="windows">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2.9 7.2 2v6H1V2.9ZM8 1.9 15 1v7H8V1.9ZM1 8.8h6.2v6L1 13.9V8.8ZM8 8.8h7V15l-7-.9V8.8Z"/></svg>
           Download for Windows
         </a>
-        <a class="btn btn-ghost btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray" data-umami-event="github" data-umami-event-location="hero">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4 0 .5-.2.5-.4v-1.5c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.3 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-4 0-.9.3-1.6.8-2.1 0-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.5.8 1.2.8 2.1 0 3.1-1.9 3.8-3.6 4 .3.2.5.7.5 1.4v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .2Z"/></svg>
-          View on GitHub
+        <a class="btn btn-ghost btn-lg btn-icon dl-mac" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" data-umami-event="download" data-umami-event-location="hero" data-umami-event-platform="macos">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+          Download for macOS
         </a>
       </div>
       <p class="cta-note hero-enter" style="--delay: 300ms" id="dl-note"><span>Free · MIT</span><span>No account</span><span>Claude Code · Codex · Cursor</span></p>
@@ -554,6 +552,8 @@
       <span><svg class="agent-ic" aria-hidden="true"><use href="#i-claude"/></svg>Claude Code</span>
       <span><svg class="agent-ic" aria-hidden="true"><use href="#i-openai"/></svg>Codex</span>
       <span><svg class="agent-ic" aria-hidden="true"><use href="#i-cursor"/></svg>Cursor</span>
+      <span><svg class="agent-ic" aria-hidden="true"><use href="#i-copilot"/></svg>Copilot</span>
+      <span><svg class="agent-ic" aria-hidden="true"><use href="#i-gemini"/></svg>Gemini CLI</span>
     </div>
   </div>
 </div>
@@ -568,8 +568,8 @@
 
     <div class="bento reveal-group">
       <div class="card span-3">
-        <h3>Live Claude quotas</h3>
-        <p>Session, weekly, and model-specific limits with reset countdowns. The tray icon shifts from green to yellow to red as you approach a cap.</p>
+        <h3>Live quotas: Claude, Codex, Copilot, Cursor, Gemini</h3>
+        <p>Session, weekly, daily, and model-specific limits with reset countdowns. The tray icon shifts from green to yellow to red as you approach a cap.</p>
         <div class="shot">
           <div class="pp" id="mock-quota" role="img" aria-label="Quota section with session and weekly progress bars and reset times.">
             <div class="pp-label">Quota</div>
@@ -692,9 +692,9 @@
 <section>
   <div class="wrap widget-strip">
     <div class="reveal">
-      <div class="kicker">Desktop widget</div>
+      <div class="kicker">Widget &amp; menu bar</div>
       <h2>Quotas without clicking anything.</h2>
-      <p class="section-sub">An optional always-on-top widget floats near your tray with the session and weekly bars. Plus a one-time Windows notification when you cross a threshold you set.</p>
+      <p class="section-sub">On Windows, an optional always-on-top widget floats near your tray with the session and weekly bars. On macOS, the menu bar item shows the same two bars. Plus a one-time system notification when you cross a threshold you set.</p>
       <ul class="checklist">
         <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Always visible, never in the way</li>
         <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Configurable warning threshold with native notifications</li>
@@ -712,18 +712,22 @@
     <div class="reveal">
       <div class="kicker">Privacy</div>
       <h2>Your usage data never leaves your machine.</h2>
-      <p class="section-sub">No accounts. No telemetry. No cloud storage. The only network calls are the Anthropic and OpenAI quota checks, using the logins you already have, plus the GitHub update check.</p>
+      <p class="section-sub">No accounts. No telemetry. No cloud storage. The only network calls are the quota checks to Anthropic, OpenAI, GitHub, Cursor and Google, using the logins you already have, plus the GitHub update check.</p>
     </div>
     <div class="bento reveal-group">
       <div class="card span-3">
         <h3>Your existing logins</h3>
-        <p>Quota data comes from the OAuth tokens the Claude and Codex CLIs already keep on disk. Nothing new to sign into, nothing to paste in.</p>
+        <p>Quota data comes from the tokens Claude Code, Codex, Copilot (editor plugin or <span class="pp-mono">gh</span> CLI), Cursor and Gemini CLI already keep on disk. On macOS the Claude token lives in the Keychain, read via the <span class="pp-mono">security</span> CLI after one “Always Allow” prompt. Nothing new to sign into, nothing to paste in, nothing leaves the machine.</p>
         <div class="shot">
-          <div class="pp" role="img" aria-label="Credential files the app reads: Claude and Codex, both read only.">
+          <div class="pp" role="img" aria-label="Credentials the app reads: the Claude credentials file or macOS Keychain entry, the Codex auth file, the Copilot apps.json, Cursor’s state database, and the Gemini CLI OAuth file, all read only.">
             <div class="pp-label">Credentials</div>
             <div class="pp-list">
               <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-claude"/></svg><span class="pp-mono">~/.claude/<wbr>.credentials.json</span></span><span class="pp-tag">read only</span></div>
+              <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-claude"/></svg><span class="pp-mono">Keychain · Claude Code-credentials</span></span><span class="pp-tag">read only</span></div>
               <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-openai"/></svg><span class="pp-mono">~/.codex/<wbr>auth.json</span></span><span class="pp-tag">read only</span></div>
+              <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-copilot"/></svg><span class="pp-mono">github-copilot/<wbr>apps.json</span></span><span class="pp-tag">read only</span></div>
+              <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-cursor"/></svg><span class="pp-mono">Cursor/<wbr>globalStorage/<wbr>state.vscdb</span></span><span class="pp-tag">read only</span></div>
+              <div><span class="pp-name"><svg class="pp-ic" aria-hidden="true"><use href="#i-gemini"/></svg><span class="pp-mono">~/.gemini/<wbr>oauth_creds.json</span></span><span class="pp-tag">read only</span></div>
               <div><span class="pp-name pp-muted">New account or API key</span><span class="pp-tag off">none</span></div>
             </div>
           </div>
@@ -731,13 +735,17 @@
       </div>
       <div class="card span-3">
         <h3>Every network call, listed</h3>
-        <p>Three hosts. Quota checks go straight to the providers with your own session, and the update check hits GitHub Releases. That is the whole list.</p>
+        <p>Seven hosts. Quota checks go straight to each provider with your own session, and the update check hits GitHub Releases. That is the whole list.</p>
         <div class="shot">
-          <div class="pp" role="img" aria-label="Outbound hosts: api.anthropic.com, chatgpt.com, and github.com.">
-            <div class="pp-head"><span class="pp-label">Outbound</span><span class="pp-muted pp-sm">3 hosts</span></div>
+          <div class="pp" role="img" aria-label="Outbound hosts: api.anthropic.com, chatgpt.com, api.github.com, cursor.com, cloudcode-pa.googleapis.com, oauth2.googleapis.com, and github.com.">
+            <div class="pp-head"><span class="pp-label">Outbound</span><span class="pp-muted pp-sm">7 hosts</span></div>
             <div class="pp-list">
               <div><span class="pp-name pp-mono">api.anthropic.com</span><span class="pp-meta">Claude quota</span></div>
               <div><span class="pp-name pp-mono">chatgpt.com</span><span class="pp-meta">Codex quota</span></div>
+              <div><span class="pp-name pp-mono">api.github.com</span><span class="pp-meta">Copilot quota</span></div>
+              <div><span class="pp-name pp-mono">cursor.com</span><span class="pp-meta">Cursor quota</span></div>
+              <div><span class="pp-name pp-mono">cloudcode-pa.googleapis.com</span><span class="pp-meta">Gemini quota</span></div>
+              <div><span class="pp-name pp-mono">oauth2.googleapis.com</span><span class="pp-meta">Gemini token refresh</span></div>
               <div><span class="pp-name pp-mono">github.com</span><span class="pp-meta">Update check</span></div>
               <div><span class="pp-name pp-mono pp-muted">anything else</span><span class="pp-tag off">none</span></div>
             </div>
@@ -775,9 +783,9 @@
         <h3>Open source</h3>
         <p>MIT licensed. Read every line, or build the installer yourself.</p>
         <div class="shot">
-          <div class="pp pp-term" role="img" aria-label="Terminal building the installer from source.">
+          <div class="pp pp-term" role="img" aria-label="Terminal building the Windows installer and the macOS disk image from source.">
             <div class="pp-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-            <div class="pp-mono"><span>$</span> git clone <b>agent-usage-tray</b><br><span>$</span> npm install<br><span>$</span> npm run dist<br><i>✓</i> release/Agent Usage <data id="term-ver">0.1.4</data>.exe</div>
+            <div class="pp-mono"><span>$</span> git clone <b>agent-usage-tray</b><br><span>$</span> npm install<br><span>$</span> npm run dist<br><i>✓</i> release/Agent Usage <data class="term-ver">0.1.4</data>.exe<br><span>$</span> npm run dist:mac<br><i>✓</i> release/Agent Usage-<data class="term-ver">0.1.4</data>-arm64.dmg</div>
           </div>
         </div>
       </div>
@@ -791,26 +799,38 @@
       <div class="reveal">
         <div class="kicker">Download</div>
         <h2>Up and running in 30 seconds.</h2>
-        <p class="section-sub">One installer, no admin rights. Updates arrive in the tray.</p>
+        <p class="section-sub">One download per platform, no admin rights. Windows updates itself from the tray; macOS shows a Download link when a new version is out.</p>
       </div>
-      <div class="cta-row reveal" style="--delay: 80ms">
-        <a class="btn btn-primary btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" id="dl-btn-2" data-umami-event="download" data-umami-event-location="footer-cta">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2.9 7.2 2v6H1V2.9ZM8 1.9 15 1v7H8V1.9ZM1 8.8h6.2v6L1 13.9V8.8ZM8 8.8h7V15l-7-.9V8.8Z"/></svg>
-          Download for Windows
-        </a>
-        <a class="btn btn-ghost btn-lg btn-icon" href="https://github.com/antoniosumak/agent-usage-tray/releases" data-umami-event="releases">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4 0 .5-.2.5-.4v-1.5c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.3 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-4 0-.9.3-1.6.8-2.1 0-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.5.8 1.2.8 2.1 0 3.1-1.9 3.8-3.6 4 .3.2.5.7.5 1.4v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .2Z"/></svg>
-          All releases
-        </a>
+      <div class="dl-grid reveal-group">
+        <div class="card dl-plat">
+          <h3 class="dl-plat-head"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2.9 7.2 2v6H1V2.9ZM8 1.9 15 1v7H8V1.9ZM1 8.8h6.2v6L1 13.9V8.8ZM8 8.8h7V15l-7-.9V8.8Z"/></svg> Windows</h3>
+          <a class="btn btn-primary btn-lg btn-icon dl-win" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" data-umami-event="download" data-umami-event-location="footer-cta" data-umami-event-platform="windows"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2.9 7.2 2v6H1V2.9ZM8 1.9 15 1v7H8V1.9ZM1 8.8h6.2v6L1 13.9V8.8ZM8 8.8h7V15l-7-.9V8.8Z"/></svg> Download for Windows</a>
+          <p class="dl-meta" id="dl-meta-win" hidden></p>
+          <ul class="dl-list">
+            <li>Windows 10 / 11 · x64</li>
+            <li>Per-user install, no admin rights</li>
+            <li>Updates itself from the tray</li>
+            <li>Unsigned: SmartScreen shows “Unknown publisher” — choose <kbd>More info</kbd> → <kbd>Run anyway</kbd></li>
+          </ul>
+        </div>
+        <div class="card dl-plat">
+          <h3 class="dl-plat-head"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg> macOS</h3>
+          <a class="btn btn-ghost btn-lg btn-icon dl-mac" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" data-umami-event="download" data-umami-event-location="footer-cta" data-umami-event-platform="macos"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg> Download for macOS</a>
+          <p class="dl-meta" id="dl-meta-mac" hidden></p>
+          <ul class="dl-list">
+            <li>macOS 12+ · Apple Silicon &amp; Intel</li>
+            <li>Drag to Applications, lives in the menu bar</li>
+            <li>Shows a Download link when a new version is out</li>
+            <li>Unsigned: Gatekeeper blocks the first launch — open <kbd>System Settings</kbd> → <kbd>Privacy &amp; Security</kbd> → <kbd>Open Anyway</kbd></li>
+          </ul>
+        </div>
       </div>
-      <ul class="dl-facts reveal" style="--delay: 160ms" aria-label="Release details">
-        <li id="dl-version">Latest release</li>
-        <li>Windows 10 / 11 · x64</li>
-        <li>Per-user install, no admin</li>
-        <li>Auto-updates from GitHub</li>
-        <li>MIT · <a href="https://github.com/antoniosumak/agent-usage-tray" data-umami-event="github" data-umami-event-location="download-facts">Source on GitHub</a></li>
-      </ul>
-      <p class="dl-note reveal" style="--delay: 240ms">Unsigned build: SmartScreen shows “Unknown publisher”. Choose <span style="white-space: nowrap"><kbd>More info</kbd> → <kbd>Run anyway</kbd></span>, or <a href="https://github.com/antoniosumak/agent-usage-tray#build-from-source" data-umami-event="build-from-source">build from source</a>.</p>
+      <p class="dl-foot reveal" style="--delay: 160ms">
+        <span id="dl-version">Latest release</span>
+        <span>MIT</span>
+        <a href="https://github.com/antoniosumak/agent-usage-tray/releases" data-umami-event="releases">All releases</a>
+        <a href="https://github.com/antoniosumak/agent-usage-tray#build-from-source" data-umami-event="build-from-source">Build from source</a>
+      </p>
     </div>
   </div>
 </section>
@@ -987,22 +1007,37 @@
     }, 4000);
   }
 
-  // latest version + direct installer link from GitHub API; falls back to releases page
+  // platform-aware download buttons: the visitor's platform goes first and dark
+  const isMac = /Mac/i.test(navigator.platform) || /Macintosh|Mac OS X/.test(navigator.userAgent);
+  if (isMac) for (const row of document.querySelectorAll('.cta-row, .dl-grid')) {
+    const mac = row.querySelector('.dl-mac'), win = row.querySelector('.dl-win');
+    if (!mac || !win) continue;
+    mac.classList.replace('btn-ghost', 'btn-primary');
+    win.classList.replace('btn-primary', 'btn-ghost');
+    row.prepend(mac.closest('.dl-plat') || mac); // whole card in the grid, just the button in a row
+  }
+
+  // latest version + direct asset links from GitHub API; falls back to releases page
   fetch('https://api.github.com/repos/antoniosumak/agent-usage-tray/releases/latest')
     .then(r => r.ok ? r.json() : null)
     .then(rel => {
       if (!rel) return;
-      const exe = (rel.assets || []).find(a => a.name.endsWith('.exe'));
-      // "v0.1.4 · 34 MB · Aug 12, 2026" — version, size and date in one glance
-      const facts = [
-        rel.tag_name,
-        exe && `${Math.round(exe.size / 1048576)} MB`,
-        rel.published_at && new Date(rel.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      ].filter(Boolean);
-      document.getElementById('term-ver').textContent = rel.tag_name.replace(/^v/, ''); // terminal mock tracks the real release
-      if (facts.length) document.getElementById('dl-version').textContent = facts.join(' · ');
-      if (exe) for (const id of ['dl-btn', 'dl-btn-2'])
-        document.getElementById(id).href = exe.browser_download_url;
+      const assets = rel.assets || [];
+      const exe = assets.find(a => a.name.endsWith('.exe'));
+      const dmg = assets.find(a => a.name.endsWith('arm64.dmg')) || assets.find(a => a.name.endsWith('.dmg'));
+      const date = rel.published_at && new Date(rel.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      document.getElementById('dl-version').textContent = [rel.tag_name, date].filter(Boolean).join(' · ');
+      for (const el of document.querySelectorAll('.term-ver')) el.textContent = rel.tag_name.replace(/^v/, ''); // terminal mock tracks the real release
+      // direct asset link + "name · size" under each platform button
+      const fill = (plat, a) => {
+        if (!a) return;
+        for (const el of document.querySelectorAll('.dl-' + plat)) el.href = a.browser_download_url;
+        const m = document.getElementById('dl-meta-' + plat);
+        m.textContent = `${a.name} · ${Math.round(a.size / 1048576)} MB`;
+        m.hidden = false;
+      };
+      fill('win', exe);
+      fill('mac', dmg);
     })
     .catch(() => {});
 </script>

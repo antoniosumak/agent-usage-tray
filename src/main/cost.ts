@@ -63,7 +63,7 @@ export const initialCostState: CostState = {
 
 function commandExists(cmd: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const p = spawn("where.exe", [cmd], { windowsHide: true });
+    const p = spawn(process.platform === "win32" ? "where.exe" : "which", [cmd], { windowsHide: true });
     p.on("error", () => resolve(false));
     p.on("close", (code) => resolve(code === 0));
   });

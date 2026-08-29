@@ -1,7 +1,7 @@
 {
   "name": "agent-usage",
   "version": "0.1.4",
-  "description": "Windows tray app: live Claude quotas + cross-agent token/cost tracking",
+  "description": "Tray / menu bar app: live Claude quotas + cross-agent token/cost tracking",
   "main": "dist/main.js",
   "scripts": {
     "build:main": "esbuild src/main/main.ts --bundle --platform=node --external:electron --outfile=dist/main.js",
@@ -12,7 +12,10 @@
     "build:html": "node -e \"require('fs').copyFileSync('src/renderer/index.html','dist/index.html');require('fs').copyFileSync('src/renderer/widget.html','dist/widget.html')\"",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer && npm run build:widget && npm run build:css && npm run build:html",
     "start": "npm run build && electron .",
-    "dist": "npm run build && electron-builder --win nsis"
+    "dist": "npm run build && electron-builder --win nsis",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "shoot": "npm run build && esbuild scripts/shoot.ts --bundle --platform=node --external:electron --outfile=dist/shoot.js && electron dist/shoot.js",
+    "shoot:mac": "npm run build && esbuild scripts/shoot-mac.ts --bundle --platform=node --external:electron --outfile=dist/shoot-mac.js && electron dist/shoot-mac.js"
   },
   "build": {
     "appId": "io.bozic.agent-usage",
@@ -33,6 +36,27 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.developer-tools",
+      "identity": null
     },
     "publish": {
       "provider": "github",
