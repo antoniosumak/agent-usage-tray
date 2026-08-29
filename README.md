@@ -107,10 +107,10 @@ npm run dist:mac    # macOS: release/Agent Usage-<ver>-arm64.dmg (and x64)
 
 ## Cut a release
 
-Push a version tag. GitHub Actions builds the Windows installer and the macOS
-DMGs in a matrix and publishes them in one release.
+Bump the version in your PR. When it merges into `master`, GitHub Actions tags
+`vX.Y.Z`, builds the Windows installer and the macOS DMGs in a matrix, and
+publishes them in one release. A merge without a version bump releases nothing.
 
 ```
-npm version patch      # this bumps package.json and adds the tag vX.Y.Z
-git push --follow-tags
+npm version patch --no-git-tag-version   # bumps package.json + package-lock.json
 ```
