@@ -31,9 +31,16 @@ stays on your computer.
 
 ## Screenshots
 
-| Popup (dark) | Settings | Widget |
+| Popup (dark) | Settings | Widget (Windows) |
 | --- | --- | --- |
 | <img src="docs/screenshots/popup-dark.png" alt="The popup in the dark theme." width="260"> | <img src="docs/screenshots/settings-light.png" alt="The settings view. It shows the refresh interval, the warning threshold, the startup option, and the section toggles." width="260"> | <img src="docs/screenshots/widget.png" alt="The floating desktop widget. It shows two quota bars." width="260"> |
+
+**macOS.** The menu bar item shows the 5-hour and 7-day bars with the percent
+and the reset time. The popup opens below it.
+
+| Menu bar item | Menu bar item (dark) | Popup below the menu bar |
+| --- | --- | --- |
+| <img src="docs/screenshots/mac-menubar.png" alt="The macOS menu bar. The Agent Usage item sits next to the system icons and shows the 5-hour bar at 45 percent and the 7-day bar at 63 percent." width="260"> | <img src="docs/screenshots/mac-menubar-strip-dark.png" alt="The same menu bar item on a dark menu bar." width="260"> | <img src="docs/screenshots/mac-popup.png" alt="The popup hanging below the macOS menu bar item." width="260"> |
 
 ## How it works
 

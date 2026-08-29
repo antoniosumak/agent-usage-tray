@@ -245,10 +245,15 @@
     border-radius: var(--radius-section);
     padding: clamp(28px, 8vw, 64px) 24px; display: flex; align-items: center; justify-content: center;
   }
+  .widget-visual { flex-direction: column; gap: 36px; }
+  .widget-visual.mac-first { flex-direction: column-reverse; } /* visitor's platform on top */
+  .widget-visual figure { margin: 0; width: 100%; max-width: 400px; display: grid; gap: 12px; justify-items: center; }
+  .widget-visual figcaption { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-500); }
   .widget-visual img {
     max-width: 400px; width: 100%;
     filter: drop-shadow(0 24px 40px rgba(0,0,0,.22));
   }
+  .widget-visual .shot-mac { border-radius: 8px; filter: drop-shadow(0 16px 28px rgba(0,0,0,.18)); }
   .checklist { list-style: none; margin-top: 28px; display: grid; gap: 14px; }
   .checklist li { display: flex; gap: 12px; align-items: flex-start; color: var(--ink-600); font-size: 15px; line-height: 1.55; text-wrap: pretty; }
   .check {
@@ -708,7 +713,14 @@
       </ul>
     </div>
     <div class="widget-visual reveal">
-      <img src="screenshots/widget.png" alt="The floating desktop widget with session and weekly quota bars." loading="lazy" width="1272" height="240">
+      <figure>
+        <img src="screenshots/widget.png" alt="The floating Windows desktop widget with session and weekly quota bars." loading="lazy" width="1272" height="240">
+        <figcaption>Windows widget</figcaption>
+      </figure>
+      <figure>
+        <img class="shot-mac" src="screenshots/mac-menubar.png" alt="The macOS menu bar with the Agent Usage item next to the system icons: 5-hour bar at 45%, 7-day bar at 63%, with reset times." loading="lazy" width="920" height="60">
+        <figcaption>macOS menu bar</figcaption>
+      </figure>
     </div>
   </div>
 </section>
@@ -1001,6 +1013,7 @@
   const ICON_MAC = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>';
   const primaryBtns = ['dl-btn', 'dl-btn-2'].map(id => document.getElementById(id));
   if (isMac) {
+    document.querySelector('.widget-visual')?.classList.add('mac-first');
     for (const btn of primaryBtns) btn.innerHTML = ICON_MAC + '<span class="dl-label">Download for macOS</span>';
     for (const el of document.querySelectorAll('.dl-other')) el.textContent = 'Windows';
   }
