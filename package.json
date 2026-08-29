@@ -1,6 +1,6 @@
 {
   "name": "agent-usage",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Tray / menu bar app: live Claude quotas + cross-agent token/cost tracking",
   "main": "dist/main.js",
   "scripts": {

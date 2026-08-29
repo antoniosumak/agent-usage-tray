@@ -1,14 +1,40 @@
 name: release
 
+# Release on merge: every push to master whose package.json version has no tag
+# yet gets tagged vX.Y.Z, built for Windows + macOS, and published. A merge that
+# does not bump the version is a no-op here.
 on:
   push:
-    tags: ['v*']
+    branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      new: ${{ steps.v.outputs.new }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          tag="v$(node -p "require('./package.json').version")"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "$tag already released, skipping"
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            git tag "$tag"
+            git push origin "$tag"
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: tag
+    if: needs.tag.outputs.new == 'true'
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
@@ -20,8 +46,9 @@ jobs:
           node-version: 20
       - run: npm ci
       - run: npm run build
-      # electron-builder uploads to a draft (reliable for the large installer);
-      # the publish job flips it live only after every asset has finished uploading.
+      # electron-builder uploads to a draft release named after package.json's
+      # version (reliable for the large installer); the publish job flips it live
+      # only after every asset has finished uploading.
       - if: runner.os == 'Windows'
         run: npx electron-builder --win nsis --publish always
         env:
@@ -34,10 +61,11 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
   publish:
-    needs: build
+    needs: [tag, build]
+    if: needs.tag.outputs.new == 'true'
     runs-on: ubuntu-latest
     steps:
-      - run: gh release edit ${{ github.ref_name }} --draft=false
+      - run: gh release edit ${{ needs.tag.outputs.tag }} --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
