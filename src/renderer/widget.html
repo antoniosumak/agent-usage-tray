@@ -51,8 +51,9 @@
   <div id="root">
     <div id="provider" title=""></div>
     <div id="bars">
-      <div class="row"><span class="label">5h</span><div class="track" id="track-session" role="progressbar" aria-label="5-hour session usage" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill-session"></div></div><span class="pct" id="pct-session">–</span><span class="reset" id="reset-session"></span></div>
-      <div class="row"><span class="label">7d</span><div class="track" id="track-weekly_all" role="progressbar" aria-label="7-day usage" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill-weekly_all"></div></div><span class="pct" id="pct-weekly_all">–</span><span class="reset" id="reset-weekly_all"></span></div>
+      <!-- two rows = the selected provider's first two buckets (5h/7d for Claude & Codex, monthly for Copilot & Cursor) -->
+      <div class="row"><span class="label" id="label-0">5h</span><div class="track" id="track-0" role="progressbar" aria-label="Session usage" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill-0"></div></div><span class="pct" id="pct-0">–</span><span class="reset" id="reset-0"></span></div>
+      <div class="row"><span class="label" id="label-1">7d</span><div class="track" id="track-1" role="progressbar" aria-label="Weekly usage" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill-1"></div></div><span class="pct" id="pct-1">–</span><span class="reset" id="reset-1"></span></div>
     </div>
   </div>
   <script src="widget.js"></script>

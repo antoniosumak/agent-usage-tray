@@ -34,6 +34,10 @@ export function fakeState(tick: number): {
         { provider: "anthropic", kind: "credits", label: "Usage credits", percent: 1, resetsAt: null, note: "$6.67 / $1,000" },
         { provider: "codex", kind: "session", label: "Session", percent: 58, resetsAt: iso(70) },
         { provider: "codex", kind: "weekly_all", label: "Weekly", percent: 34, resetsAt: iso(60 * 96) },
+        { provider: "copilot", kind: "monthly", label: "Premium requests", percent: 71, resetsAt: iso(60 * 24 * 9), note: "213 / 300" },
+        { provider: "cursor", kind: "monthly", label: "Included usage", percent: 46, resetsAt: iso(60 * 24 * 17), note: "$9.20 / $20" },
+        { provider: "gemini", kind: "gemini_daily", label: "Daily · Pro", percent: 82, resetsAt: iso(60 * 11) },
+        { provider: "gemini", kind: "gemini_daily", label: "Daily · Flash", percent: 27, resetsAt: iso(60 * 11) },
       ],
     },
     cost: {

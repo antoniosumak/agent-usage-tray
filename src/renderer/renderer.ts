@@ -170,7 +170,7 @@ function countdown(resetsAt: string | null): string {
   return `${mins}m`;
 }
 
-const PROVIDER_LABEL: Record<string, string> = { anthropic: "Claude", codex: "Codex", cursor: "Cursor" };
+const PROVIDER_LABEL: Record<string, string> = { anthropic: "Claude", codex: "Codex", copilot: "Copilot", cursor: "Cursor", gemini: "Gemini" };
 
 // The provider is disambiguated by the segmented control, so rows are unprefixed.
 function bucketName(b: QuotaBucket): string {
@@ -224,11 +224,10 @@ function pctHtml(pct: number, suffix: string): string {
   return `${core}${suffix ? ` <span class="font-normal ${MUTED}">· ${suffix}</span>` : ""}`;
 }
 
-// note (credits) wins over the reset countdown; empty string means no suffix.
+// note ("$6.67 / $1,000", "88 / 300") then the reset countdown; empty string means no suffix.
 function bucketSuffix(b: QuotaBucket): string {
-  if (b.note) return b.note;
   const reset = countdown(b.resetsAt);
-  return reset ? `resets in ${reset}` : "";
+  return [b.note, reset ? `resets in ${reset}` : ""].filter(Boolean).join(" · ");
 }
 
 // Providers present, primary (anthropic) first so the default tab is Claude.

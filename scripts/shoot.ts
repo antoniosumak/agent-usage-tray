@@ -108,6 +108,13 @@ const shootTheme = async (theme: "light" | "dark") => {
   popup.hide();
 };
 
+// Park the window off-screen but visible so Chromium keeps compositing it.
+const show = async (win: BrowserWindow) => {
+  win.setPosition(-4000, -4000);
+  win.showInactive();
+  await new Promise((r) => setTimeout(r, 700));
+};
+
 app.whenReady().then(async () => {
   await shootTheme("light");
   await shootTheme("dark");
@@ -115,6 +122,7 @@ app.whenReady().then(async () => {
   // Widget — transparent surface, carries its own dark chrome.
   const widget = new BrowserWindow({ width: 212, height: 40, show: false, frame: false, transparent: true, webPreferences: { preload: path.join(dist, "preload.js") } });
   await load(widget, "widget.html");
+  await show(widget); // hidden windows only paint their first frame; the state-fed bars land after it
   await shoot(widget, "widget.png");
 
   app.quit();

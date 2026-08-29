@@ -1,7 +1,7 @@
 # Agent Usage
 
-Agent Usage is a tray app for Windows and macOS. It shows your live Claude
-quotas. It also tracks tokens and cost across your AI coding agents. Everything
+Agent Usage is a tray app for Windows and macOS. It shows your live Claude,
+Codex, Copilot, Cursor and Gemini quotas. It also tracks tokens and cost across your AI coding agents. Everything
 stays on your computer.
 
 <p align="center">
@@ -10,8 +10,9 @@ stays on your computer.
 
 ## What it does
 
-- **Shows your Claude quota in real time.** It reads the 5-hour session limit,
-  the weekly limits, and your usage credits. The tray icon changes color as you
+- **Shows your quotas in real time.** Claude: the 5-hour session limit, the
+  weekly limits, and your usage credits. Codex: session and weekly windows.
+  Copilot and Cursor: monthly allowance. Gemini CLI: daily requests per model. The tray icon changes color as you
   get close to a limit. Green means low use. Yellow means medium use. Red means
   high use.
 - **Tracks cost across your agents.** It shows how many tokens and dollars you
@@ -44,16 +45,21 @@ and the reset time. The popup opens below it.
 
 ## How it works
 
-- **Quota data comes from your Claude Code login.** The app reads the OAuth
-  token from your local `~/.claude` folder. On macOS it reads the token from
-  the Keychain instead. It then calls the Anthropic usage API. If you are not
-  logged in to Claude Code, the app shows no quota.
+- **Quota data comes from the logins you already have.** Claude: the OAuth
+  token in your local `~/.claude` folder (the Keychain on macOS), then the
+  Anthropic usage API. Codex: `~/.codex/auth.json`, then the ChatGPT usage
+  endpoint. GitHub Copilot: the editor plugin's `github-copilot/apps.json` or your `gh` CLI login, then
+  `api.github.com/copilot_internal/user` (monthly premium requests). Cursor: the
+  session token in Cursor's `state.vscdb`, then `cursor.com/api/usage-summary`
+  (included usage per billing cycle). Gemini CLI: `~/.gemini/oauth_creds.json`,
+  then the Code Assist quota endpoint (daily requests per model). Each provider
+  shows only when its login exists; none of them is required.
 - **Cost data comes from `tokscale`.** The app runs `tokscale` with `bunx` or
   `npx`. `tokscale` reads your local agent logs and calculates the tokens and
   the cost. You need `bun` or `node` on your computer for this feature.
 
-The app sends no data to any server except the Anthropic usage API. It stores no
-data in the cloud.
+The app sends no data to any server except those quota endpoints and the GitHub
+release check. It stores no data in the cloud.
 
 ## Download
 

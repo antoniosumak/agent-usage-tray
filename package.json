@@ -14,6 +14,7 @@
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder --win nsis",
     "dist:mac": "npm run build && electron-builder --mac",
+    "shoot": "npm run build && esbuild scripts/shoot.ts --bundle --platform=node --external:electron --outfile=dist/shoot.js && electron dist/shoot.js",
     "shoot:mac": "npm run build && esbuild scripts/shoot-mac.ts --bundle --platform=node --external:electron --outfile=dist/shoot-mac.js && electron dist/shoot-mac.js"
   },
   "build": {
