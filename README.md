@@ -82,7 +82,11 @@ Get the latest build from the
   **System Settings → Privacy & Security**, scroll to "Agent Usage was
   blocked", and click **Open Anyway**. Or right-click the app and choose
   **Open**. From a terminal, this does the same:
-  `xattr -dr com.apple.quarantine "/Applications/Agent Usage.app"`
+
+  ```sh
+  xattr -dr com.apple.quarantine "/Applications/Agent Usage.app"
+  ```
+
 - **Keychain prompt.** Claude Code on macOS stores its login in the Keychain
   (service "Claude Code-credentials"). The app reads it with the `security`
   command. macOS asks once. Click **Always Allow**. If

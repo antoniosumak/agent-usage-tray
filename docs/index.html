@@ -288,6 +288,12 @@
   .dl-list li { position: relative; padding-left: 15px; }
   .dl-list li::before { content: ""; position: absolute; left: 0; top: 7px; width: 5px; height: 5px; border-radius: 99px; background: var(--green); }
   .dl-list kbd { font: inherit; font-weight: 600; color: var(--ink-700); white-space: nowrap; }
+  .dl-cmd { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 9px 12px; border: 1px solid var(--line-150); border-radius: 8px; background: var(--warm-50); }
+  .dl-cmd code { flex: 1; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; line-height: 1.5; color: var(--ink-700); overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+  .dl-cmd code::-webkit-scrollbar { display: none; }
+  .dl-cmd button { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; border: 0; padding: 4px 8px; border-radius: 6px; background: transparent; font: 600 12px/1 var(--font); color: var(--ink-500); cursor: pointer; transition: color .15s, background .15s; }
+  .dl-cmd button:hover { color: var(--ink-800); background: var(--warm-100); }
+  .dl-cmd button.copied { color: var(--green); }
   .dl-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; font-size: 13px; font-weight: 500; color: var(--ink-400); font-variant-numeric: tabular-nums; }
   .dl-foot #dl-version { color: var(--ink-700); font-weight: 600; }
   .dl-foot a { color: var(--ink-600); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(0,0,0,.25); transition: text-decoration-color .15s, color .15s; }
@@ -821,8 +827,12 @@
             <li>macOS 12+ · Apple Silicon &amp; Intel</li>
             <li>Drag to Applications, lives in the menu bar</li>
             <li>Shows a Download link when a new version is out</li>
-            <li>Unsigned: Gatekeeper blocks the first launch — open <kbd>System Settings</kbd> → <kbd>Privacy &amp; Security</kbd> → <kbd>Open Anyway</kbd></li>
+            <li>Unsigned: Gatekeeper blocks the first launch — open <kbd>System Settings</kbd> → <kbd>Privacy &amp; Security</kbd> → <kbd>Open Anyway</kbd>, or run this in Terminal:</li>
           </ul>
+          <div class="dl-cmd">
+            <code id="xattr-cmd">xattr -dr com.apple.quarantine "/Applications/Agent Usage.app"</code>
+            <button type="button" id="xattr-copy" aria-label="Copy command" data-umami-event="copy-xattr">Copy</button>
+          </div>
         </div>
       </div>
       <p class="dl-foot reveal" style="--delay: 160ms">
@@ -1016,6 +1026,16 @@
     win.classList.replace('btn-primary', 'btn-ghost');
     row.prepend(mac.closest('.dl-plat') || mac); // whole card in the grid, just the button in a row
   }
+
+  // copy the macOS quarantine command
+  const xattrBtn = document.getElementById('xattr-copy');
+  if (xattrBtn) xattrBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('xattr-cmd').textContent).then(() => {
+      xattrBtn.textContent = 'Copied';
+      xattrBtn.classList.add('copied');
+      setTimeout(() => { xattrBtn.textContent = 'Copy'; xattrBtn.classList.remove('copied'); }, 2000);
+    }).catch(() => {});
+  });
 
   // latest version + direct asset links from GitHub API; falls back to releases page
   fetch('https://api.github.com/repos/antoniosumak/agent-usage-tray/releases/latest')
