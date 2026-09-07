@@ -172,6 +172,19 @@ function countdown(resetsAt: string | null): string {
 
 const PROVIDER_LABEL: Record<string, string> = { anthropic: "Claude", codex: "Codex", copilot: "Copilot", cursor: "Cursor", gemini: "Gemini" };
 
+// Extra Claude accounts (from ~/.claude-accounts) report as "anthropic:<name>".
+// They all share the Claude tab; the name becomes a group header inside it.
+function tabOf(provider: string): string {
+  return provider.startsWith("anthropic") ? "anthropic" : provider;
+}
+
+// Group header inside the Claude tab: the account file's name, or the default
+// Claude Code login for the bare "anthropic" provider.
+function accountName(provider: string): string {
+  const i = provider.indexOf(":");
+  return i >= 0 ? provider.slice(i + 1) : "This device";
+}
+
 // The provider is disambiguated by the segmented control, so rows are unprefixed.
 function bucketName(b: QuotaBucket): string {
   return b.kind === "session" ? "Session" : b.kind === "weekly_all" ? "Weekly" : b.label;
@@ -182,9 +195,10 @@ function bucketName(b: QuotaBucket): string {
 // available provider.
 let quotaProvider: string | null = null;
 
-// Unique DOM key: kind alone collides once two providers both report "session".
+// Unique DOM key: kind alone collides once two providers both report "session",
+// and provider:kind collides across two weekly_scoped models — include label.
 function bucketKey(b: QuotaBucket): string {
-  return `${b.provider}:${b.kind}`;
+  return `${b.provider}:${b.kind}:${b.label}`;
 }
 
 function esc(s: string): string {
@@ -230,9 +244,10 @@ function bucketSuffix(b: QuotaBucket): string {
   return [b.note, reset ? `resets in ${reset}` : ""].filter(Boolean).join(" · ");
 }
 
-// Providers present, primary (anthropic) first so the default tab is Claude.
+// Provider tabs present (Claude accounts collapse into one Claude tab),
+// primary (anthropic) first so the default tab is Claude.
 function quotaProviders(quota: QuotaState): string[] {
-  const seen = [...new Set(quota.buckets.map((b) => b.provider))];
+  const seen = [...new Set(quota.buckets.map((b) => tabOf(b.provider)))];
   return seen.sort((a, b) => (a === "anthropic" ? -1 : b === "anthropic" ? 1 : 0));
 }
 
@@ -256,11 +271,9 @@ function renderQuota(quota: QuotaState): string {
   const sel = quotaProvider && providers.includes(quotaProvider) ? quotaProvider : providers[0];
   quotaProvider = sel;
   const tabs = providers.length > 1 ? providerTabs(providers, sel) : "";
-  const rows = quota.buckets
-    .filter((b) => b.provider === sel)
-    .map((b) => {
-      const pct = Math.min(Math.max(b.percent, 0), 100);
-      return `
+  const bucketRow = (b: QuotaBucket) => {
+    const pct = Math.min(Math.max(b.percent, 0), 100);
+    return `
         <div class="space-y-1.5" data-bucket="${esc(bucketKey(b))}" title="${esc(b.label)}">
           <div class="flex items-baseline justify-between">
             <span class="text-xs">${esc(bucketName(b))}</span>
@@ -270,8 +283,26 @@ function renderQuota(quota: QuotaState): string {
             <div class="${QUOTA_FILL}" data-fill style="width:${pct}%"></div>
           </div>
         </div>`;
-    })
-    .join("");
+  };
+  const mine = quota.buckets.filter((b) => tabOf(b.provider) === sel);
+  // Several Claude accounts under one tab: default login first, then account
+  // files alphabetically, each under its account-name header. Single provider
+  // (the common case, and every non-Claude tab) stays a flat list.
+  const groups = [...new Set(mine.map((b) => b.provider))].sort((a, b) =>
+    a === "anthropic" ? -1 : b === "anthropic" ? 1 : a.localeCompare(b),
+  );
+  const rows =
+    groups.length > 1
+      ? groups
+          .map(
+            (p) => `
+        <div class="space-y-2 pt-1">
+          <div class="text-[10px] uppercase tracking-wide font-semibold ${MUTED} truncate" title="${esc(accountName(p))}">${esc(accountName(p))}</div>
+          ${mine.filter((b) => b.provider === p).map(bucketRow).join("")}
+        </div>`,
+          )
+          .join("")
+      : mine.map(bucketRow).join("");
   return header + tabs + rows;
 }
 

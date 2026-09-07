@@ -1,6 +1,6 @@
 // Runnable check for Codex usage parsing. Not imported by the app.
 // Run: npx esbuild src/main/quota.test.ts --bundle --platform=node --external:electron --outfile="%TEMP%/quota.test.js" && node "%TEMP%/quota.test.js"
-import { parseBuckets, parseCodexUsage, parseCopilotUser, parseCursorSummary, parseCursorUsage, extractCursorJwt, parseGeminiQuota } from "./quota";
+import { parseBuckets, parseCodexUsage, parseCopilotUser, parseCursorSummary, parseCursorUsage, extractCursorJwt, parseGeminiQuota, accountLabel, normalizeCredsJson } from "./quota";
 
 // Absolute reset, 5h + weekly windows; role derived from duration, not name.
 const abs = parseCodexUsage({
@@ -138,3 +138,16 @@ console.assert(Math.round(gem[0].percent) === 60 && gem[0].resetsAt === "2026-08
 console.assert(gem[1].label === "Daily · Flash" && Math.round(gem[1].percent) === 10, `gemini1=${JSON.stringify(gem[1])}`);
 console.assert(parseGeminiQuota({}).length === 0, "gemini empty not zero");
 console.log("quota gemini parse: OK");
+
+// Multi-account: filename → account label (claude- prefix and .json stripped).
+console.assert(accountLabel("claude-tony@example.dev.json") === "tony@example.dev", `label=${accountLabel("claude-tony@example.dev.json")}`);
+console.assert(accountLabel("/home/u/.claude-accounts/work.JSON") === "work", `label=${accountLabel("/home/u/.claude-accounts/work.JSON")}`);
+console.assert(accountLabel("claude_max.json") === "max", `label=${accountLabel("claude_max.json")}`);
+
+// Credential blob shapes: wrapped (.credentials.json) and bare oauth object.
+const wrapped = normalizeCredsJson({ claudeAiOauth: { accessToken: "a", refreshToken: "r" } });
+console.assert(wrapped !== null && wrapped.bare === false && wrapped.json.claudeAiOauth.accessToken === "a", `wrapped=${JSON.stringify(wrapped)}`);
+const bare = normalizeCredsJson({ accessToken: "a", refreshToken: "r", expiresAt: 1 });
+console.assert(bare !== null && bare.bare === true && bare.json.claudeAiOauth.accessToken === "a", `bare=${JSON.stringify(bare)}`);
+console.assert(normalizeCredsJson({ foo: 1 }) === null && normalizeCredsJson(null) === null, "junk creds not rejected");
+console.log("quota accounts: OK");

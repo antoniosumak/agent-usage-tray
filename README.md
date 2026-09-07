@@ -26,6 +26,10 @@ stays on your computer.
   a heatmap of your token use for each hour of the day.
 - **Warns you.** It sends a system notification one time when you pass a limit
   that you set.
+- **Tracks several Claude accounts at once.** If you juggle more than one
+  Claude subscription, drop one credential file per account into
+  `~/.claude-accounts`. Every account shows its own quota bars under the Claude
+  tab. See [Multiple Claude accounts](#multiple-claude-accounts).
 - **Adds an optional desktop widget.** On Windows the widget floats near the
   tray. It shows the session bar and the 7-day bar. On macOS the menu bar item
   shows the same two bars.
@@ -60,6 +64,35 @@ and the reset time. The popup opens below it.
 
 The app sends no data to any server except those quota endpoints and the GitHub
 release check. It stores no data in the cloud.
+
+## Multiple Claude accounts
+
+Claude Code keeps one login at a time in `~/.claude/.credentials.json`, so the
+app normally shows one Claude account. To track more accounts, save one
+credential file per account in `~/.claude-accounts` (create the folder; set the
+`AGENT_USAGE_ACCOUNTS_DIR` environment variable to use a different one):
+
+```
+~/.claude-accounts/
+  claude-work@acme.dev.json
+  claude-personal@gmail.com.json
+```
+
+To make such a file, log the account in with its own config folder, then copy
+the credentials out:
+
+```
+CLAUDE_CONFIG_DIR=~/.claude-work claude /login
+cp ~/.claude-work/.credentials.json ~/.claude-accounts/claude-work@acme.dev.json
+```
+
+Files saved by account switchers work too — both the whole `.credentials.json`
+shape and the bare `claudeAiOauth` object are accepted. The filename (minus a
+`claude-` prefix and `.json`) becomes the account's name in the popup. Each
+account's token refreshes in place, so a login stays live without running
+Claude Code again. Every account then shows its own session/weekly bars as a
+group under the Claude tab; your current `~/.claude` login shows first as
+"This device".
 
 ## Download
 

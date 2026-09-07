@@ -41,13 +41,20 @@ const PROVIDER_ICON: Record<string, { name: string; svg: string }> = {
 const SHORT_LABEL: Record<string, string> = { session: "5h", weekly_all: "7d", weekly_scoped: "7d", codex_daily: "1d", monthly: "mo", codex_monthly: "mo", credits: "$" };
 
 // Selected provider: settings choice if its buckets are present, else the first
-// available (anthropic-first, matching the popup's tab order).
+// available (anthropic-first, matching the popup's tab order). Extra Claude
+// accounts report as "anthropic:<name>"; the default login outranks them, and
+// the popup's Claude tab ("anthropic") matches any of them when the default
+// login is absent.
+function rank(p: string): number {
+  return p === "anthropic" ? 0 : p.startsWith("anthropic:") ? 1 : 2;
+}
 function selectedProvider(s: any): string {
   const provs = [...new Set((s.quota?.buckets ?? []).map((b: any) => b.provider))].sort(
-    (a: any, b: any) => (a === "anthropic" ? -1 : b === "anthropic" ? 1 : 0),
+    (a: any, b: any) => rank(a) - rank(b) || String(a).localeCompare(String(b)),
   ) as string[];
   const want = s.settings?.quotaProvider;
-  return want && provs.includes(want) ? want : provs[0] ?? "anthropic";
+  const hit = want ? provs.find((p) => p === want || (want === "anthropic" && p.startsWith("anthropic"))) : undefined;
+  return hit ?? provs[0] ?? "anthropic";
 }
 
 // macOS menu bar variant of the same markup (see body.mac rules in widget.html)
@@ -57,10 +64,11 @@ let last: any = null;
 function render(s: any): void {
   last = s;
   const prov = selectedProvider(s);
-  const icon = PROVIDER_ICON[prov];
+  // Account providers ("anthropic:<name>") carry the Claude mark, titled by account.
+  const icon = PROVIDER_ICON[prov] ?? (prov.startsWith("anthropic:") ? PROVIDER_ICON.anthropic : undefined);
   const provEl = document.getElementById("provider")!;
   provEl.innerHTML = icon?.svg ?? "";
-  provEl.title = icon?.name ?? prov;
+  provEl.title = prov.startsWith("anthropic:") ? `Claude · ${prov.slice(10)}` : icon?.name ?? prov;
   const mine = (s.quota?.buckets ?? []).filter((b: any) => b.provider === prov);
   for (let i = 0; i < 2; i++) {
     const bucket = mine[i] ?? null;
