@@ -262,8 +262,24 @@
     outline: 1px solid rgba(0,0,0,.1); outline-offset: -1px;
     filter: none; box-shadow: var(--shadow-card);
   }
-  .pp.acct-term { margin-top: 26px; border-radius: 8px; border-bottom: 1px solid #1a1a1a; }
-  .pp.acct-term .pp-mono { overflow-wrap: anywhere; }
+  .codeblock { position: relative; margin-top: 26px; border-radius: 10px; background: var(--ink-950); }
+  .codeblock pre { margin: 0; padding: 16px 52px 16px 18px; overflow-x: auto; scrollbar-width: thin; }
+  .codeblock code {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 13px; line-height: 1.75; white-space: pre; color: #e4e4e7;
+  }
+  .codeblock .c { color: #71717a; }
+  .codeblock-copy {
+    position: absolute; top: 10px; right: 10px; z-index: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.12); background: var(--ink-950); color: #a1a1aa;
+    transition: color .15s, background .15s;
+  }
+  .codeblock-copy:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .codeblock-copy .ic-check { display: none; }
+  .codeblock-copy.copied .ic-copy { display: none; }
+  .codeblock-copy.copied .ic-check { display: block; color: #7dd3a0; }
 
   /* ---------- privacy ---------- */
   .pp-mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .917em; }
@@ -732,13 +748,20 @@
         <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Tokens refresh automatically in place, so every login stays live &mdash; set it and forget it</li>
         <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>The filename becomes the account name; new files are picked up on the next poll, no restart</li>
       </ul>
-      <div class="pp pp-term acct-term">
-        <div class="pp-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-        <div class="pp-mono"><span>$</span> CLAUDE_CONFIG_DIR=~/.claude-work claude <b>/login</b><br><span>$</span> cp ~/.claude-work/.credentials.json <b>~/.claude-accounts/claude-work@acme.dev.json</b><br><i>✓</i> work@acme.dev shows up on the next poll</div>
+      <div class="codeblock">
+        <button class="codeblock-copy" type="button" aria-label="Copy commands" onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText);this.classList.add('copied');setTimeout(()=>this.classList.remove('copied'),1600)">
+          <svg class="ic-copy" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>
+          <svg class="ic-check" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5"/></svg>
+        </button>
+        <pre><code><span class="c"># log in once with a separate config dir</span>
+CLAUDE_CONFIG_DIR=~/.claude-work claude /login
+
+<span class="c"># save the credentials — the filename becomes the account name</span>
+cp ~/.claude-work/.credentials.json ~/.claude-accounts/claude-work@acme.dev.json</code></pre>
       </div>
     </div>
     <div class="widget-visual acct-visual reveal">
-      <img src="screenshots/multiaccount-light.png" alt="The Claude quota tab listing three accounts — the active login on this device, personal@gmail.com, and work@acme.dev — each with its own session and weekly bars." loading="lazy" width="2088" height="3175">
+      <img src="screenshots/multiaccount-light.png" alt="The account list from the Claude quota tab: the active login on this device, personal@gmail.com, and work@acme.dev, each with its own session and weekly bars." loading="lazy" width="1968" height="2620">
     </div>
   </div>
 </section>
