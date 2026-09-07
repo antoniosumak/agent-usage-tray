@@ -256,8 +256,13 @@
   }
 
   /* ---------- multi-account ---------- */
+  /* The non-wrapping code block would otherwise inflate the copy column's
+     min-content and squeeze the visual: let grid items shrink to their track. */
+  .widget-strip > * { min-width: 0; }
+  /* Stretch the tinted panel to the full height of the copy column. */
+  .acct-visual { align-self: stretch; }
   .acct-visual img {
-    max-width: 340px;
+    max-width: 420px;
     border-radius: var(--radius-card);
     outline: 1px solid rgba(0,0,0,.1); outline-offset: -1px;
     filter: none; box-shadow: var(--shadow-card);
@@ -756,7 +761,7 @@
         <pre><code><span class="c"># log in once with a separate config dir</span>
 CLAUDE_CONFIG_DIR=~/.claude-work claude /login
 
-<span class="c"># save the credentials — the filename becomes the account name</span>
+<span class="c"># save the credentials; the filename is the account name</span>
 cp ~/.claude-work/.credentials.json ~/.claude-accounts/claude-work@acme.dev.json</code></pre>
       </div>
     </div>
