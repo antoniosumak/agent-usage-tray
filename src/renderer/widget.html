@@ -25,14 +25,35 @@
     .pct { width: 26px; text-align: right; font-variant-numeric: tabular-nums; }
     .reset { width: 30px; text-align: right; color: #8a8a8e; font-variant-numeric: tabular-nums; }
     @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+
+    /* macOS menu bar item (rendered offscreen, 124x22): no card, ink follows the
+       menu bar's light/dark, fills color-coded by threshold like the tray icon. */
+    body.mac { color-scheme: light dark; }
+    body.mac #root {
+      padding: 0 2px; gap: 5px; background: transparent; border: 0; border-radius: 0;
+      font: 600 8.5px -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+      color: light-dark(#101012, #f5f5f7);
+    }
+    body.mac #provider, body.mac #provider svg { width: 14px; height: 14px; }
+    body.mac #provider svg[fill] { fill: currentColor; } /* Codex glyph: ink, not fixed light gray */
+    body.mac #bars { gap: 2px; }
+    body.mac .row { gap: 4px; height: 9px; }
+    body.mac .label { width: 11px; color: inherit; opacity: 0.7; }
+    body.mac .track { height: 5px; border-radius: 2.5px; background: light-dark(rgba(0,0,0,0.16), rgba(255,255,255,0.22)); }
+    body.mac .fill { border-radius: 2.5px; transition: none; background: #22c55e; }
+    body.mac .fill[data-lvl="warn"] { background: #eab308; }
+    body.mac .fill[data-lvl="hot"] { background: #ef4444; }
+    body.mac .pct { width: 22px; }
+    body.mac .reset { width: 16px; color: inherit; opacity: 0.6; }
 </style>
 </head>
 <body>
   <div id="root">
     <div id="provider" title=""></div>
     <div id="bars">
-      <div class="row"><span class="label">5h</span><div class="track" id="track-session" role="progressbar" aria-label="5-hour session usage" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill-session"></div></div><span class="pct" id="pct-session">–</span><span class="reset" id="reset-session"></span></div>
-      <div class="row"><span class="label">7d</span><div class="track" id="track-weekly_all" role="progressbar" aria-label="7-day usage" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill-weekly_all"></div></div><span class="pct" id="pct-weekly_all">–</span><span class="reset" id="reset-weekly_all"></span></div>
+      <!-- two rows = the selected provider's first two buckets (5h/7d for Claude & Codex, monthly for Copilot & Cursor) -->
+      <div class="row"><span class="label" id="label-0">5h</span><div class="track" id="track-0" role="progressbar" aria-label="Session usage" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill-0"></div></div><span class="pct" id="pct-0">–</span><span class="reset" id="reset-0"></span></div>
+      <div class="row"><span class="label" id="label-1">7d</span><div class="track" id="track-1" role="progressbar" aria-label="Weekly usage" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill-1"></div></div><span class="pct" id="pct-1">–</span><span class="reset" id="reset-1"></span></div>
     </div>
   </div>
   <script src="widget.js"></script>

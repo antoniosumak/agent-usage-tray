@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, Menu } from "electron";
 import * as path from "path";
-import { createTray, popupPosition, updateTray } from "./tray";
+import { createMenuBarRenderer, createTray, popupPosition, updateTray } from "./tray";
 import { createWidget, watchWidgetClicks } from "./widget";
 import { initialQuotaState, startQuota, QuotaState } from "./quota";
 import { initialCostState, startCost, CostState, Range } from "./cost";
@@ -18,7 +18,9 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.setAppUserModelId("io.bozic.agent-usage"); // Windows toasts need an AUMID
+  const isMac = process.platform === "darwin";
   app.whenReady().then(() => {
+    if (isMac) app.dock?.hide(); // menu bar only, like a Windows tray app
     let settings = loadSettings();
     applyLoginItem(settings);
     const intervalMs = () => settings.refreshMinutes * 60_000;
@@ -36,7 +38,9 @@ if (!app.requestSingleInstanceLock()) {
     win.loadFile(path.join(__dirname, "index.html"));
     win.on("blur", () => win.hide());
     const tray = createTray(win);
-    const widget = createWidget();
+    // darwin: no taskbar to embed in — the "widget" is an offscreen renderer
+    // whose frames become the menu bar image. Same state feed either way.
+    const widget = isMac ? createMenuBarRenderer(tray) : createWidget();
 
     let quota: QuotaState = initialQuotaState;
     let cost: CostState = initialCostState;
@@ -83,13 +87,14 @@ if (!app.requestSingleInstanceLock()) {
       win.show();
       win.focus();
     };
-    watchWidgetClicks(widget, (button) => {
-      if (button === "left") toggleFromWidget();
-      else
-        Menu.buildFromTemplate([{ label: "Quit", click: () => app.quit() }]).popup({
-          window: win,
-        });
-    });
+    if (!isMac)
+      watchWidgetClicks(widget, (button) => {
+        if (button === "left") toggleFromWidget();
+        else
+          Menu.buildFromTemplate([{ label: "Quit", click: () => app.quit() }]).popup({
+            window: win,
+          });
+      });
 
     // AGENT_USAGE_FAKE=1: skip all pollers, feed canned state and tick the
     // session % through the color thresholds so the tray/widget visibly change.
