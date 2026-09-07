@@ -110,7 +110,6 @@ interface Settings {
   warnThresholdPct: number;
   enabledAgents: string[] | null;
   quotaProvider: string | null;
-  quotaGroupBy: "account" | "limit";
   sections: SectionPref[];
 }
 
@@ -196,9 +195,6 @@ function bucketName(b: QuotaBucket): string {
 // available provider.
 let quotaProvider: string | null = null;
 
-// Multi-account Claude view: one card per account, or one card per limit kind
-// with a bar per account. Persisted in settings; synced from each snapshot.
-let quotaGroupBy: "account" | "limit" = "account";
 
 // Unique DOM key: kind alone collides once two providers both report "session",
 // and provider:kind collides across two weekly_scoped models — include label.
@@ -291,67 +287,34 @@ function renderQuota(quota: QuotaState): string {
           </div>
         </div>`;
   };
-  const card = (head: string, body: string) => `
-      <div class="rounded-lg border border-[#e3e3e3] dark:border-neutral-800 bg-[#fafafa] dark:bg-neutral-800/40 p-2.5 space-y-2">
-        <div class="flex items-center justify-between gap-2 pb-0.5 border-b border-[#ebebeb] dark:border-neutral-800">${head}</div>
-        ${body}
-      </div>`;
   const mine = quota.buckets.filter((b) => tabOf(b.provider) === sel);
-  // Several Claude accounts under one tab, two layouts (toggle below the tabs):
-  // "By account" — one inset card per account (default login first, files
-  // alphabetically), so another account's bars never read as the current
-  // account's usage. "All in one" — a single flat list where each limit
-  // appears once and holds one bar per account, to compare accounts at a
-  // glance. Single provider (the common case, and every non-Claude tab)
-  // stays a flat, card-less list.
+  // Several Claude accounts under one tab: default login first, then account
+  // files alphabetically. Each account is a flat group headed by its name (plus
+  // an active-login/account badge), separated by a thin rule, so another
+  // account's bars never read as the current account's usage. Single provider
+  // (the common case, and every non-Claude tab) stays a plain header-less list.
   const byAccount = (a: string, b: string) => (a === "anthropic" ? -1 : b === "anthropic" ? 1 : a.localeCompare(b));
   const groups = [...new Set(mine.map((b) => b.provider))].sort(byAccount);
-  const accountCard = (p: string) => {
+  const accountGroup = (p: string, i: number) => {
     const name = accountName(p);
     const badge =
       p === "anthropic"
         ? `<span class="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-px rounded-full bg-[#005bd3]/10 text-[#005bd3] dark:bg-blue-400/15 dark:text-blue-400 shrink-0">active login</span>`
         : `<span class="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-px rounded-full bg-black/[0.06] dark:bg-white/10 ${MUTED} shrink-0">account</span>`;
-    const head = `<span class="text-[11px] font-semibold truncate pb-1" title="${esc(name)}">${esc(name)}</span>${badge}`;
-    return card(head, mine.filter((b) => b.provider === p).map((b) => bucketRow(b)).join(""));
+    // Rule between accounts only (header + tabs precede the first group in the
+    // DOM, so a first: variant can't do it).
+    const sep = i > 0 ? "pt-2.5 border-t border-[#f1f1f1] dark:border-neutral-800" : "";
+    return `
+      <div class="space-y-2 ${sep}">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] font-semibold truncate" title="${esc(name)}">${esc(name)}</span>
+          ${badge}
+        </div>
+        ${mine.filter((b) => b.provider === p).map((b) => bucketRow(b)).join("")}
+      </div>`;
   };
-  // One flat list, no cards: each limit (kind + label, so scoped weeklies
-  // stay separate) appears once as a small header with one bar per account
-  // under it, in first-appearance order — the default account lists session
-  // first. The account name on every bar keeps rows unambiguous.
-  const combined = () => {
-    const seen = new Map<string, { name: string; buckets: QuotaBucket[] }>();
-    for (const b of mine) {
-      const key = `${b.kind} ${b.label}`;
-      if (!seen.has(key)) seen.set(key, { name: bucketName(b), buckets: [] });
-      seen.get(key)!.buckets.push(b);
-    }
-    return [...seen.values()]
-      .map(
-        (g) => `
-      <div class="space-y-2">
-        <div class="text-[10px] uppercase tracking-wide font-semibold ${MUTED} pt-1.5 border-t border-[#f1f1f1] dark:border-neutral-800 first:border-t-0 first:pt-0">${esc(g.name)}</div>
-        ${g.buckets
-          .sort((a, b) => byAccount(a.provider, b.provider))
-          .map((b) => bucketRow(b, accountName(b.provider)))
-          .join("")}
-      </div>`,
-      )
-      .join("");
-  };
-  const groupBtn = (mode: string, label: string) =>
-    `<button data-quota-group="${mode}" class="flex-1 py-0.5 rounded-md cursor-pointer transition-colors ${mode === quotaGroupBy ? RANGE_ACTIVE : RANGE_INACTIVE}">${label}</button>`;
-  const groupToggle =
-    groups.length > 1
-      ? `<div class="flex gap-0.5 p-0.5 rounded-lg bg-[#ebebeb] dark:bg-neutral-800 text-[10px] font-medium">${groupBtn("account", "By account")}${groupBtn("limit", "All in one")}</div>`
-      : "";
-  const rows =
-    groups.length > 1
-      ? quotaGroupBy === "limit"
-        ? combined()
-        : groups.map(accountCard).join("")
-      : mine.map((b) => bucketRow(b)).join("");
-  return header + tabs + groupToggle + rows;
+  const rows = groups.length > 1 ? groups.map(accountGroup).join("") : mine.map((b) => bucketRow(b)).join("");
+  return header + tabs + rows;
 }
 
 function updateQuota(el: HTMLElement, quota: QuotaState): void {
@@ -905,9 +868,8 @@ let blocksKey = "";
 function render(): void {
   if (!snapshot) return;
   quotaProvider = snapshot.settings.quotaProvider ?? quotaProvider;
-  quotaGroupBy = snapshot.settings.quotaGroupBy ?? quotaGroupBy;
   const quotaEl = document.getElementById("quota")!;
-  const qk = JSON.stringify([quotaProvider, quotaGroupBy, snapshot.quota.status, snapshot.quota.buckets.map((b) => [b.provider, b.kind, b.label])]);
+  const qk = JSON.stringify([quotaProvider, snapshot.quota.status, snapshot.quota.buckets.map((b) => [b.provider, b.kind, b.label])]);
   if (qk !== quotaKey) {
     quotaKey = qk;
     quotaEl.innerHTML = renderQuota(snapshot.quota);
@@ -1065,16 +1027,8 @@ function showSettings(open: boolean): void {
   if (open) updateScrollFades(); // height is 0 while hidden — mask is only real once shown
 }
 
-// Quota provider tabs + account/limit grouping toggle (delegated: the
-// section's innerHTML is re-rendered).
+// Quota provider tabs (delegated: the section's innerHTML is re-rendered).
 document.getElementById("quota")!.addEventListener("click", (e) => {
-  const g = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-quota-group]");
-  if (g && g.dataset.quotaGroup !== quotaGroupBy) {
-    quotaGroupBy = g.dataset.quotaGroup as "account" | "limit";
-    window.api.setSettings({ quotaGroupBy });
-    render();
-    return;
-  }
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-quota-provider]");
   if (!b || b.dataset.quotaProvider === quotaProvider) return;
   quotaProvider = b.dataset.quotaProvider!;

@@ -16,7 +16,7 @@ const out = path.join(__dirname, "..", "docs", "screenshots");
 fs.mkdirSync(out, { recursive: true });
 
 const f = fakeState(1); // tick 1 => session 45%, all buckets populated
-// SHOOT_SETTINGS='{"quotaGroupBy":"limit"}' overrides individual settings, to
+// SHOOT_SETTINGS='{"warnThresholdPct":50}' overrides individual settings, to
 // capture views that depend on them without touching the defaults.
 const settings = { ...defaultSettings, ...(process.env.SHOOT_SETTINGS ? JSON.parse(process.env.SHOOT_SETTINGS) : {}) };
 const snapshot = { ...f, settings, update: null, range: "today", version: app.getVersion() };
