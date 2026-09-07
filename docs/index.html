@@ -255,6 +255,16 @@
     background: var(--green-soft); color: var(--green);
   }
 
+  /* ---------- multi-account ---------- */
+  .acct-visual img {
+    max-width: 340px;
+    border-radius: var(--radius-card);
+    outline: 1px solid rgba(0,0,0,.1); outline-offset: -1px;
+    filter: none; box-shadow: var(--shadow-card);
+  }
+  .pp.acct-term { margin-top: 26px; border-radius: 8px; border-bottom: 1px solid #1a1a1a; }
+  .pp.acct-term .pp-mono { overflow-wrap: anywhere; }
+
   /* ---------- privacy ---------- */
   .pp-mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .917em; }
   .pp-tag { font-size: max(.75em, 10px); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 0 .4em; border-radius: .3em; line-height: 1.6; background: var(--green-soft); color: var(--green); flex-shrink: 0; }
@@ -440,6 +450,9 @@
   @media (max-width: 560px) {
     .span-2, .span-3 { grid-column: span 6; }
   }
+  @media (max-width: 600px) {
+    .nav-links a.ac { display: none; }
+  }
   @media (max-width: 480px) {
     .nav-links a.gh, .nav-links a.pv { display: none; }
   }
@@ -465,6 +478,7 @@
     </a>
     <div class="nav-links">
       <a class="plain" href="#features" data-umami-event="nav-features">Features</a>
+      <a class="plain ac" href="#accounts" data-umami-event="nav-accounts">Accounts</a>
       <a class="plain pv" href="#privacy" data-umami-event="nav-privacy">Privacy</a>
       <a class="plain gh" href="https://github.com/antoniosumak/agent-usage-tray" data-umami-event="github" data-umami-event-location="nav">GitHub</a>
       <a class="btn btn-primary" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" data-umami-event="download" data-umami-event-location="nav">Download</a>
@@ -703,6 +717,28 @@
     </div>
     <div class="widget-visual reveal">
       <img src="screenshots/widget.png" alt="The floating desktop widget with session and weekly quota bars." loading="lazy" width="1272" height="240">
+    </div>
+  </div>
+</section>
+
+<section id="accounts">
+  <div class="wrap widget-strip">
+    <div class="reveal">
+      <div class="kicker">Multiple Claude accounts</div>
+      <h2>Every account&rsquo;s quota. One popup.</h2>
+      <p class="section-sub">Juggling a personal Max plan and a work subscription? Drop one saved credential file per account into <span class="pp-mono">~/.claude-accounts</span> and the Claude tab shows them all &mdash; your active login first, then each account with its own session, weekly, and credit bars.</p>
+      <ul class="checklist">
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>One-time setup per account: log in, copy the credentials file, done</li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Tokens refresh automatically in place, so every login stays live &mdash; set it and forget it</li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>The filename becomes the account name; new files are picked up on the next poll, no restart</li>
+      </ul>
+      <div class="pp pp-term acct-term">
+        <div class="pp-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="pp-mono"><span>$</span> CLAUDE_CONFIG_DIR=~/.claude-work claude <b>/login</b><br><span>$</span> cp ~/.claude-work/.credentials.json <b>~/.claude-accounts/claude-work@acme.dev.json</b><br><i>✓</i> work@acme.dev shows up on the next poll</div>
+      </div>
+    </div>
+    <div class="widget-visual acct-visual reveal">
+      <img src="screenshots/multiaccount-light.png" alt="The Claude quota tab listing three accounts — the active login on this device, personal@gmail.com, and work@acme.dev — each with its own session and weekly bars." loading="lazy" width="2088" height="3175">
     </div>
   </div>
 </section>
