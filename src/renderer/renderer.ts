@@ -286,23 +286,29 @@ function renderQuota(quota: QuotaState): string {
   };
   const mine = quota.buckets.filter((b) => tabOf(b.provider) === sel);
   // Several Claude accounts under one tab: default login first, then account
-  // files alphabetically, each under its account-name header. Single provider
-  // (the common case, and every non-Claude tab) stays a flat list.
+  // files alphabetically. Each account gets its own inset card with a labeled
+  // header, so another account's bars never read as the current account's
+  // usage. Single provider (the common case, and every non-Claude tab) stays
+  // a flat, card-less list.
   const groups = [...new Set(mine.map((b) => b.provider))].sort((a, b) =>
     a === "anthropic" ? -1 : b === "anthropic" ? 1 : a.localeCompare(b),
   );
-  const rows =
-    groups.length > 1
-      ? groups
-          .map(
-            (p) => `
-        <div class="space-y-2 pt-1">
-          <div class="text-[10px] uppercase tracking-wide font-semibold ${MUTED} truncate" title="${esc(accountName(p))}">${esc(accountName(p))}</div>
-          ${mine.filter((b) => b.provider === p).map(bucketRow).join("")}
-        </div>`,
-          )
-          .join("")
-      : mine.map(bucketRow).join("");
+  const accountCard = (p: string) => {
+    const name = accountName(p);
+    const badge =
+      p === "anthropic"
+        ? `<span class="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-px rounded-full bg-[#005bd3]/10 text-[#005bd3] dark:bg-blue-400/15 dark:text-blue-400 shrink-0">active login</span>`
+        : `<span class="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-px rounded-full bg-black/[0.06] dark:bg-white/10 ${MUTED} shrink-0">account</span>`;
+    return `
+      <div class="rounded-lg border border-[#e3e3e3] dark:border-neutral-800 bg-[#fafafa] dark:bg-neutral-800/40 p-2.5 space-y-2">
+        <div class="flex items-center justify-between gap-2 pb-0.5 border-b border-[#ebebeb] dark:border-neutral-800">
+          <span class="text-[11px] font-semibold truncate pb-1" title="${esc(name)}">${esc(name)}</span>
+          ${badge}
+        </div>
+        ${mine.filter((b) => b.provider === p).map(bucketRow).join("")}
+      </div>`;
+  };
+  const rows = groups.length > 1 ? groups.map(accountCard).join("") : mine.map(bucketRow).join("");
   return header + tabs + rows;
 }
 
