@@ -110,6 +110,7 @@ interface Settings {
   warnThresholdPct: number;
   enabledAgents: string[] | null;
   quotaProvider: string | null;
+  quotaGroupBy: "account" | "limit";
   sections: SectionPref[];
 }
 
@@ -195,6 +196,10 @@ function bucketName(b: QuotaBucket): string {
 // available provider.
 let quotaProvider: string | null = null;
 
+// Multi-account Claude view: one card per account, or one card per limit kind
+// with a bar per account. Persisted in settings; synced from each snapshot.
+let quotaGroupBy: "account" | "limit" = "account";
+
 // Unique DOM key: kind alone collides once two providers both report "session",
 // and provider:kind collides across two weekly_scoped models — include label.
 function bucketKey(b: QuotaBucket): string {
@@ -271,45 +276,77 @@ function renderQuota(quota: QuotaState): string {
   const sel = quotaProvider && providers.includes(quotaProvider) ? quotaProvider : providers[0];
   quotaProvider = sel;
   const tabs = providers.length > 1 ? providerTabs(providers, sel) : "";
-  const bucketRow = (b: QuotaBucket) => {
+  // `name` overrides the row label (the account name in the by-limit view).
+  const bucketRow = (b: QuotaBucket, name?: string) => {
     const pct = Math.min(Math.max(b.percent, 0), 100);
+    const rowName = name ?? bucketName(b);
     return `
-        <div class="space-y-1.5" data-bucket="${esc(bucketKey(b))}" title="${esc(b.label)}">
-          <div class="flex items-baseline justify-between">
-            <span class="text-xs">${esc(bucketName(b))}</span>
-            <span class="text-xs font-semibold tabular-nums select-text cursor-text" data-pct>${pctHtml(pct, bucketSuffix(b))}</span>
+        <div class="space-y-1.5" data-bucket="${esc(bucketKey(b))}" title="${esc(name ? `${name} · ${b.label}` : b.label)}">
+          <div class="flex items-baseline justify-between gap-2">
+            <span class="text-xs truncate">${esc(rowName)}</span>
+            <span class="text-xs font-semibold tabular-nums shrink-0 select-text cursor-text" data-pct>${pctHtml(pct, bucketSuffix(b))}</span>
           </div>
-          <div class="h-1.5 rounded-full bg-[#ebebeb] dark:bg-neutral-800 overflow-hidden" role="progressbar" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(bucketName(b))}">
+          <div class="h-1.5 rounded-full bg-[#ebebeb] dark:bg-neutral-800 overflow-hidden" role="progressbar" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(rowName)}">
             <div class="${QUOTA_FILL}" data-fill style="width:${pct}%"></div>
           </div>
         </div>`;
   };
+  const card = (head: string, body: string) => `
+      <div class="rounded-lg border border-[#e3e3e3] dark:border-neutral-800 bg-[#fafafa] dark:bg-neutral-800/40 p-2.5 space-y-2">
+        <div class="flex items-center justify-between gap-2 pb-0.5 border-b border-[#ebebeb] dark:border-neutral-800">${head}</div>
+        ${body}
+      </div>`;
   const mine = quota.buckets.filter((b) => tabOf(b.provider) === sel);
-  // Several Claude accounts under one tab: default login first, then account
-  // files alphabetically. Each account gets its own inset card with a labeled
-  // header, so another account's bars never read as the current account's
-  // usage. Single provider (the common case, and every non-Claude tab) stays
-  // a flat, card-less list.
-  const groups = [...new Set(mine.map((b) => b.provider))].sort((a, b) =>
-    a === "anthropic" ? -1 : b === "anthropic" ? 1 : a.localeCompare(b),
-  );
+  // Several Claude accounts under one tab, two layouts (toggle below the tabs):
+  // "By account" — one inset card per account (default login first, files
+  // alphabetically), so another account's bars never read as the current
+  // account's usage. "By limit" — one card per limit kind with a bar per
+  // account, to compare accounts at a glance. Single provider (the common
+  // case, and every non-Claude tab) stays a flat, card-less list.
+  const byAccount = (a: string, b: string) => (a === "anthropic" ? -1 : b === "anthropic" ? 1 : a.localeCompare(b));
+  const groups = [...new Set(mine.map((b) => b.provider))].sort(byAccount);
   const accountCard = (p: string) => {
     const name = accountName(p);
     const badge =
       p === "anthropic"
         ? `<span class="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-px rounded-full bg-[#005bd3]/10 text-[#005bd3] dark:bg-blue-400/15 dark:text-blue-400 shrink-0">active login</span>`
         : `<span class="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-px rounded-full bg-black/[0.06] dark:bg-white/10 ${MUTED} shrink-0">account</span>`;
-    return `
-      <div class="rounded-lg border border-[#e3e3e3] dark:border-neutral-800 bg-[#fafafa] dark:bg-neutral-800/40 p-2.5 space-y-2">
-        <div class="flex items-center justify-between gap-2 pb-0.5 border-b border-[#ebebeb] dark:border-neutral-800">
-          <span class="text-[11px] font-semibold truncate pb-1" title="${esc(name)}">${esc(name)}</span>
-          ${badge}
-        </div>
-        ${mine.filter((b) => b.provider === p).map(bucketRow).join("")}
-      </div>`;
+    const head = `<span class="text-[11px] font-semibold truncate pb-1" title="${esc(name)}">${esc(name)}</span>${badge}`;
+    return card(head, mine.filter((b) => b.provider === p).map((b) => bucketRow(b)).join(""));
   };
-  const rows = groups.length > 1 ? groups.map(accountCard).join("") : mine.map(bucketRow).join("");
-  return header + tabs + rows;
+  // One card per limit (kind + label, so scoped weeklies stay separate), in
+  // first-appearance order — the default account lists session first.
+  const limitCards = () => {
+    const seen = new Map<string, { name: string; buckets: QuotaBucket[] }>();
+    for (const b of mine) {
+      const key = `${b.kind} ${b.label}`;
+      if (!seen.has(key)) seen.set(key, { name: bucketName(b), buckets: [] });
+      seen.get(key)!.buckets.push(b);
+    }
+    return [...seen.values()]
+      .map((g) => {
+        const head = `<span class="text-[11px] font-semibold truncate pb-1" title="${esc(g.name)}">${esc(g.name)}</span>`;
+        const body = g.buckets
+          .sort((a, b) => byAccount(a.provider, b.provider))
+          .map((b) => bucketRow(b, accountName(b.provider)))
+          .join("");
+        return card(head, body);
+      })
+      .join("");
+  };
+  const groupBtn = (mode: string, label: string) =>
+    `<button data-quota-group="${mode}" class="flex-1 py-0.5 rounded-md cursor-pointer transition-colors ${mode === quotaGroupBy ? RANGE_ACTIVE : RANGE_INACTIVE}">${label}</button>`;
+  const groupToggle =
+    groups.length > 1
+      ? `<div class="flex gap-0.5 p-0.5 rounded-lg bg-[#ebebeb] dark:bg-neutral-800 text-[10px] font-medium">${groupBtn("account", "By account")}${groupBtn("limit", "By limit")}</div>`
+      : "";
+  const rows =
+    groups.length > 1
+      ? quotaGroupBy === "limit"
+        ? limitCards()
+        : groups.map(accountCard).join("")
+      : mine.map((b) => bucketRow(b)).join("");
+  return header + tabs + groupToggle + rows;
 }
 
 function updateQuota(el: HTMLElement, quota: QuotaState): void {
@@ -863,8 +900,9 @@ let blocksKey = "";
 function render(): void {
   if (!snapshot) return;
   quotaProvider = snapshot.settings.quotaProvider ?? quotaProvider;
+  quotaGroupBy = snapshot.settings.quotaGroupBy ?? quotaGroupBy;
   const quotaEl = document.getElementById("quota")!;
-  const qk = JSON.stringify([quotaProvider, snapshot.quota.status, snapshot.quota.buckets.map((b) => [b.provider, b.kind, b.label])]);
+  const qk = JSON.stringify([quotaProvider, quotaGroupBy, snapshot.quota.status, snapshot.quota.buckets.map((b) => [b.provider, b.kind, b.label])]);
   if (qk !== quotaKey) {
     quotaKey = qk;
     quotaEl.innerHTML = renderQuota(snapshot.quota);
@@ -1022,8 +1060,16 @@ function showSettings(open: boolean): void {
   if (open) updateScrollFades(); // height is 0 while hidden — mask is only real once shown
 }
 
-// Quota provider tabs (delegated: the section's innerHTML is re-rendered).
+// Quota provider tabs + account/limit grouping toggle (delegated: the
+// section's innerHTML is re-rendered).
 document.getElementById("quota")!.addEventListener("click", (e) => {
+  const g = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-quota-group]");
+  if (g && g.dataset.quotaGroup !== quotaGroupBy) {
+    quotaGroupBy = g.dataset.quotaGroup as "account" | "limit";
+    window.api.setSettings({ quotaGroupBy });
+    render();
+    return;
+  }
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-quota-provider]");
   if (!b || b.dataset.quotaProvider === quotaProvider) return;
   quotaProvider = b.dataset.quotaProvider!;

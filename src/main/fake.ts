@@ -35,6 +35,7 @@ export function fakeState(tick: number): {
         // Extra Claude accounts (~/.claude-accounts/*.json) group under the Claude tab.
         { provider: "anthropic:work@acme.dev", kind: "session", label: "Session", percent: 78, resetsAt: iso(140) },
         { provider: "anthropic:work@acme.dev", kind: "weekly_all", label: "Weekly (all models)", percent: 91, resetsAt: iso(60 * 30) },
+        { provider: "anthropic:work@acme.dev", kind: "weekly_scoped", label: "Weekly Fable", percent: 64, resetsAt: iso(60 * 30) },
         { provider: "anthropic:personal@gmail.com", kind: "session", label: "Session", percent: 8, resetsAt: iso(230) },
         { provider: "anthropic:personal@gmail.com", kind: "weekly_all", label: "Weekly (all models)", percent: 22, resetsAt: iso(60 * 110) },
         { provider: "codex", kind: "session", label: "Session", percent: 58, resetsAt: iso(70) },

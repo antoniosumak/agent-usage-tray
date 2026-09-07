@@ -17,6 +17,7 @@ export interface Settings {
   warnThresholdPct: number;
   enabledAgents: string[] | null; // null = all agents
   quotaProvider: string | null; // which provider the widget + quota tab show; null = first available
+  quotaGroupBy: "account" | "limit"; // multi-account Claude view: card per account, or per limit kind
   sections: SectionPref[];
 }
 
@@ -35,6 +36,7 @@ export const defaultSettings: Settings = {
   warnThresholdPct: 80,
   enabledAgents: null,
   quotaProvider: null,
+  quotaGroupBy: "account",
   sections: defaultSections(),
 };
 
@@ -68,6 +70,7 @@ export function sanitizeSettings(raw: any): Settings {
     s.warnThresholdPct = Math.min(Math.max(Math.round(raw.warnThresholdPct), 1), 100);
   if (Array.isArray(raw?.enabledAgents)) s.enabledAgents = raw.enabledAgents.map(String);
   if (typeof raw?.quotaProvider === "string") s.quotaProvider = raw.quotaProvider;
+  if (raw?.quotaGroupBy === "limit" || raw?.quotaGroupBy === "account") s.quotaGroupBy = raw.quotaGroupBy;
   s.sections = sanitizeSections(raw?.sections);
   return s;
 }
