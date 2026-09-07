@@ -32,6 +32,12 @@ export function fakeState(tick: number): {
         { provider: "anthropic", kind: "weekly_all", label: "Weekly (all models)", percent: 63, resetsAt: iso(60 * 72) },
         { provider: "anthropic", kind: "weekly_scoped", label: "Weekly Fable", percent: 41, resetsAt: iso(60 * 72) },
         { provider: "anthropic", kind: "credits", label: "Usage credits", percent: 1, resetsAt: null, note: "$6.67 / $1,000" },
+        // Extra Claude accounts (~/.claude-accounts/*.json) group under the Claude tab.
+        { provider: "anthropic:work@acme.dev", kind: "session", label: "Session", percent: 78, resetsAt: iso(140) },
+        { provider: "anthropic:work@acme.dev", kind: "weekly_all", label: "Weekly (all models)", percent: 91, resetsAt: iso(60 * 30) },
+        { provider: "anthropic:work@acme.dev", kind: "weekly_scoped", label: "Weekly Fable", percent: 64, resetsAt: iso(60 * 30) },
+        { provider: "anthropic:personal@gmail.com", kind: "session", label: "Session", percent: 8, resetsAt: iso(230) },
+        { provider: "anthropic:personal@gmail.com", kind: "weekly_all", label: "Weekly (all models)", percent: 22, resetsAt: iso(60 * 110) },
         { provider: "codex", kind: "session", label: "Session", percent: 58, resetsAt: iso(70) },
         { provider: "codex", kind: "weekly_all", label: "Weekly", percent: 34, resetsAt: iso(60 * 96) },
         { provider: "copilot", kind: "monthly", label: "Premium requests", percent: 71, resetsAt: iso(60 * 24 * 9), note: "213 / 300" },

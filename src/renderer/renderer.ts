@@ -172,6 +172,19 @@ function countdown(resetsAt: string | null): string {
 
 const PROVIDER_LABEL: Record<string, string> = { anthropic: "Claude", codex: "Codex", copilot: "Copilot", cursor: "Cursor", gemini: "Gemini" };
 
+// Extra Claude accounts (from ~/.claude-accounts) report as "anthropic:<name>".
+// They all share the Claude tab; the name becomes a group header inside it.
+function tabOf(provider: string): string {
+  return provider.startsWith("anthropic") ? "anthropic" : provider;
+}
+
+// Group header inside the Claude tab: the account file's name, or the default
+// Claude Code login for the bare "anthropic" provider.
+function accountName(provider: string): string {
+  const i = provider.indexOf(":");
+  return i >= 0 ? provider.slice(i + 1) : "This device";
+}
+
 // The provider is disambiguated by the segmented control, so rows are unprefixed.
 function bucketName(b: QuotaBucket): string {
   return b.kind === "session" ? "Session" : b.kind === "weekly_all" ? "Weekly" : b.label;
@@ -182,9 +195,11 @@ function bucketName(b: QuotaBucket): string {
 // available provider.
 let quotaProvider: string | null = null;
 
-// Unique DOM key: kind alone collides once two providers both report "session".
+
+// Unique DOM key: kind alone collides once two providers both report "session",
+// and provider:kind collides across two weekly_scoped models — include label.
 function bucketKey(b: QuotaBucket): string {
-  return `${b.provider}:${b.kind}`;
+  return `${b.provider}:${b.kind}:${b.label}`;
 }
 
 function esc(s: string): string {
@@ -230,9 +245,10 @@ function bucketSuffix(b: QuotaBucket): string {
   return [b.note, reset ? `resets in ${reset}` : ""].filter(Boolean).join(" · ");
 }
 
-// Providers present, primary (anthropic) first so the default tab is Claude.
+// Provider tabs present (Claude accounts collapse into one Claude tab),
+// primary (anthropic) first so the default tab is Claude.
 function quotaProviders(quota: QuotaState): string[] {
-  const seen = [...new Set(quota.buckets.map((b) => b.provider))];
+  const seen = [...new Set(quota.buckets.map((b) => tabOf(b.provider)))];
   return seen.sort((a, b) => (a === "anthropic" ? -1 : b === "anthropic" ? 1 : 0));
 }
 
@@ -256,22 +272,48 @@ function renderQuota(quota: QuotaState): string {
   const sel = quotaProvider && providers.includes(quotaProvider) ? quotaProvider : providers[0];
   quotaProvider = sel;
   const tabs = providers.length > 1 ? providerTabs(providers, sel) : "";
-  const rows = quota.buckets
-    .filter((b) => b.provider === sel)
-    .map((b) => {
-      const pct = Math.min(Math.max(b.percent, 0), 100);
-      return `
-        <div class="space-y-1.5" data-bucket="${esc(bucketKey(b))}" title="${esc(b.label)}">
-          <div class="flex items-baseline justify-between">
-            <span class="text-xs">${esc(bucketName(b))}</span>
-            <span class="text-xs font-semibold tabular-nums select-text cursor-text" data-pct>${pctHtml(pct, bucketSuffix(b))}</span>
+  // `name` overrides the row label (the account name in the by-limit view).
+  const bucketRow = (b: QuotaBucket, name?: string) => {
+    const pct = Math.min(Math.max(b.percent, 0), 100);
+    const rowName = name ?? bucketName(b);
+    return `
+        <div class="space-y-1.5" data-bucket="${esc(bucketKey(b))}" title="${esc(name ? `${name} · ${b.label}` : b.label)}">
+          <div class="flex items-baseline justify-between gap-2">
+            <span class="text-xs truncate">${esc(rowName)}</span>
+            <span class="text-xs font-semibold tabular-nums shrink-0 select-text cursor-text" data-pct>${pctHtml(pct, bucketSuffix(b))}</span>
           </div>
-          <div class="h-1.5 rounded-full bg-[#ebebeb] dark:bg-neutral-800 overflow-hidden" role="progressbar" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(bucketName(b))}">
+          <div class="h-1.5 rounded-full bg-[#ebebeb] dark:bg-neutral-800 overflow-hidden" role="progressbar" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(rowName)}">
             <div class="${QUOTA_FILL}" data-fill style="width:${pct}%"></div>
           </div>
         </div>`;
-    })
-    .join("");
+  };
+  const mine = quota.buckets.filter((b) => tabOf(b.provider) === sel);
+  // Several Claude accounts under one tab: default login first, then account
+  // files alphabetically. Each account is a flat group headed by its name (plus
+  // an active-login/account badge), separated by a thin rule, so another
+  // account's bars never read as the current account's usage. Single provider
+  // (the common case, and every non-Claude tab) stays a plain header-less list.
+  const byAccount = (a: string, b: string) => (a === "anthropic" ? -1 : b === "anthropic" ? 1 : a.localeCompare(b));
+  const groups = [...new Set(mine.map((b) => b.provider))].sort(byAccount);
+  const accountGroup = (p: string, i: number) => {
+    const name = accountName(p);
+    const badge =
+      p === "anthropic"
+        ? `<span class="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-px rounded-full bg-[#005bd3]/10 text-[#005bd3] dark:bg-blue-400/15 dark:text-blue-400 shrink-0">active login</span>`
+        : `<span class="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-px rounded-full bg-black/[0.06] dark:bg-white/10 ${MUTED} shrink-0">account</span>`;
+    // Rule between accounts only (header + tabs precede the first group in the
+    // DOM, so a first: variant can't do it).
+    const sep = i > 0 ? "pt-2.5 border-t border-[#f1f1f1] dark:border-neutral-800" : "";
+    return `
+      <div class="space-y-2 ${sep}">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] font-semibold truncate" title="${esc(name)}">${esc(name)}</span>
+          ${badge}
+        </div>
+        ${mine.filter((b) => b.provider === p).map((b) => bucketRow(b)).join("")}
+      </div>`;
+  };
+  const rows = groups.length > 1 ? groups.map(accountGroup).join("") : mine.map((b) => bucketRow(b)).join("");
   return header + tabs + rows;
 }
 

@@ -46,32 +46,47 @@ const CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"; // Claude Code's publi
 const KEYCHAIN_SERVICE = "Claude Code-credentials";
 
 interface Creds {
-  json: any; // whole .credentials.json blob; token lives under claudeAiOauth
+  json: any; // normalized .credentials.json blob; token lives under claudeAiOauth
   source: "file" | "keychain";
+  path: string; // file the blob came from (unused for keychain)
+  bare: boolean; // file held the oauth object itself, not wrapped in claudeAiOauth
 }
 
 function credsPath(): string {
   return path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude"), ".credentials.json");
 }
 
+// Account-switcher files come in two shapes: the whole .credentials.json blob
+// ({ claudeAiOauth: {...} }) or the bare oauth object ({ accessToken, ... }).
+// Normalize to the wrapped shape; `bare` remembers which so write-back keeps it.
+export function normalizeCredsJson(json: any): { json: any; bare: boolean } | null {
+  if (json?.claudeAiOauth) return { json, bare: false };
+  if (typeof json?.accessToken === "string") return { json: { claudeAiOauth: json }, bare: true };
+  return null;
+}
+
 // Claude Code rotates the token, so re-read the blob before every request; a
 // read error just means "no token right now" (file may be mid-rewrite).
-export async function readCreds(): Promise<Creds | null> {
+// `file` overrides the default location (per-account credential files).
+export async function readCreds(file?: string): Promise<Creds | null> {
+  const p = file ?? credsPath();
   let raw: string | null = null;
   let source: Creds["source"] = "file";
   try {
-    raw = await fs.readFile(credsPath(), "utf8");
+    raw = await fs.readFile(p, "utf8");
   } catch {
     // macOS Claude Code keeps the blob in Keychain (same JSON shape); first run
-    // prompts once — "Always Allow". Missing item exits 44 → no token.
-    if (process.platform === "darwin") {
+    // prompts once — "Always Allow". Missing item exits 44 → no token. Only the
+    // default location falls back — account files never live in the Keychain.
+    if (!file && process.platform === "darwin") {
       raw = await readKeychain(KEYCHAIN_SERVICE);
       source = "keychain";
     }
   }
   if (!raw) return null;
   try {
-    return { json: JSON.parse(raw), source };
+    const n = normalizeCredsJson(JSON.parse(raw));
+    return n ? { ...n, source, path: p } : null;
   } catch {
     return null;
   }
@@ -126,15 +141,15 @@ export async function refreshAccessToken(c: Creds): Promise<string | null> {
         : {}),
     },
   };
-  await writeCreds(JSON.stringify(next), c.source).catch(() => {
+  await writeCreds(JSON.stringify(c.bare ? next.claudeAiOauth : next), c).catch(() => {
     /* still use the token in memory this poll; next poll re-reads and retries */
   });
   return t.access_token;
 }
 
-async function writeCreds(raw: string, source: Creds["source"]): Promise<void> {
-  if (source === "file") {
-    await fs.writeFile(credsPath(), raw, { mode: 0o600 });
+async function writeCreds(raw: string, c: Creds): Promise<void> {
+  if (c.source === "file") {
+    await fs.writeFile(c.path, raw, { mode: 0o600 });
     return;
   }
   // Same command Claude Code uses: -U updates in place, -X takes the hex-encoded blob.
@@ -232,34 +247,83 @@ export function parseBuckets(body: any): QuotaBucket[] {
   return buckets;
 }
 
+// One read→refresh→fetch→parse cycle against a credential blob. `file`
+// undefined = the default Claude Code location (with Keychain fallback);
+// `provider` tags the resulting buckets so per-account polls stay distinct.
+async function pollAnthropic(file: string | undefined, provider: string): Promise<ProviderResult> {
+  let creds = await readCreds(file);
+  let token = tokenOf(creds);
+  if (!creds || !token) return { status: "no-token", buckets: [] };
+  if (expired(creds)) token = (await refreshAccessToken(creds)) ?? token;
+  let res = await fetchUsage(token);
+  if (res.status === 401) {
+    // Claude Code may have rotated the token since our read — use that; else
+    // refresh it ourselves. Still 401 after that → refresh token is dead too.
+    creds = await readCreds(file);
+    const rotated = tokenOf(creds);
+    const fresh = rotated && rotated !== token ? rotated : creds ? await refreshAccessToken(creds) : null;
+    if (fresh) res = await fetchUsage(fresh);
+    if (res.status === 401) return { status: "relogin", buckets: [] };
+  }
+  if (res.status === 429) {
+    const retryAfter = parseInt(res.headers.get("retry-after") ?? "", 10);
+    const retryAfterMs =
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000, MAX_BACKOFF_MS)
+        : undefined;
+    return { status: "unavailable", buckets: [], retryAfterMs };
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const buckets = parseBuckets(await res.json()).map((b) => ({ ...b, provider }));
+  return { status: "ok", buckets };
+}
+
 export const anthropicProvider: QuotaProvider = {
   id: "anthropic",
   label: "Claude",
+  poll: () => pollAnthropic(undefined, "anthropic"),
+};
+
+// ---- Additional Claude accounts ---------------------------------------------
+// Power users juggling several subscriptions keep one credential file per
+// account in ~/.claude-accounts (override: AGENT_USAGE_ACCOUNTS_DIR). Each file
+// is a saved Claude Code credential blob — the whole .credentials.json or just
+// its claudeAiOauth object — e.g. from logging in with a per-account
+// CLAUDE_CONFIG_DIR, or dropped there by an account switcher. Every file is
+// polled with its own token (refreshed in place, so a login stays live
+// indefinitely) and shows up as its own group under the Claude tab.
+
+function accountsDir(): string {
+  return process.env.AGENT_USAGE_ACCOUNTS_DIR || path.join(os.homedir(), ".claude-accounts");
+}
+
+// "claude-tony@example.dev.json" → "tony@example.dev": the filename names the
+// account; a claude-/claude_ prefix is noise inside the Claude tab.
+export function accountLabel(file: string): string {
+  return path.basename(file).replace(/\.json$/i, "").replace(/^claude[-_.]/i, "");
+}
+
+export const claudeAccountsProvider: QuotaProvider = {
+  id: "claude-accounts",
+  label: "Claude accounts",
   async poll() {
-    let creds = await readCreds();
-    let token = tokenOf(creds);
-    if (!creds || !token) return { status: "no-token", buckets: [] };
-    if (expired(creds)) token = (await refreshAccessToken(creds)) ?? token;
-    let res = await fetchUsage(token);
-    if (res.status === 401) {
-      // Claude Code may have rotated the token since our read — use that; else
-      // refresh it ourselves. Still 401 after that → refresh token is dead too.
-      creds = await readCreds();
-      const rotated = tokenOf(creds);
-      const fresh = rotated && rotated !== token ? rotated : creds ? await refreshAccessToken(creds) : null;
-      if (fresh) res = await fetchUsage(fresh);
-      if (res.status === 401) return { status: "relogin", buckets: [] };
+    let files: string[];
+    const dir = accountsDir();
+    try {
+      files = (await fs.readdir(dir)).filter((f) => f.toLowerCase().endsWith(".json")).sort();
+    } catch {
+      return { status: "no-token", buckets: [] }; // no folder = feature unused
     }
-    if (res.status === 429) {
-      const retryAfter = parseInt(res.headers.get("retry-after") ?? "", 10);
-      const retryAfterMs =
-        Number.isFinite(retryAfter) && retryAfter > 0
-          ? Math.min(retryAfter * 1000, MAX_BACKOFF_MS)
-          : undefined;
-      return { status: "unavailable", buckets: [], retryAfterMs };
-    }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return { status: "ok", buckets: parseBuckets(await res.json()) };
+    // Accounts poll in parallel; one dead token (or a non-credential json that
+    // happens to live there) just contributes no buckets.
+    const results = await Promise.all(
+      files.map((f) =>
+        pollAnthropic(path.join(dir, f), `anthropic:${accountLabel(f)}`).catch(
+          (): ProviderResult => ({ status: "unavailable", buckets: [] }),
+        ),
+      ),
+    );
+    return { status: "ok", buckets: results.flatMap((r) => r.buckets) };
   },
 };
 
@@ -683,7 +747,7 @@ export const geminiProvider: QuotaProvider = {
 // Secondary providers polled alongside Anthropic. Empty results are ignored, so
 // an unconfigured provider is safe to leave here. Their status never flips the
 // top-level status.
-const EXTRA_PROVIDERS: QuotaProvider[] = [codexProvider, copilotProvider, cursorProvider, geminiProvider];
+const EXTRA_PROVIDERS: QuotaProvider[] = [claudeAccountsProvider, codexProvider, copilotProvider, cursorProvider, geminiProvider];
 
 export function startQuota(
   intervalMs: number,

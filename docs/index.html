@@ -255,6 +255,48 @@
     background: var(--green-soft); color: var(--green);
   }
 
+  /* ---------- multi-account ---------- */
+  /* The non-wrapping code block would otherwise inflate the copy column's
+     min-content and squeeze the visual: let grid items shrink to their track. */
+  .widget-strip > * { min-width: 0; }
+  /* Stretch the tinted panel to the full height of the copy column. */
+  .acct-visual { align-self: stretch; }
+  .acct-visual img {
+    max-width: 420px;
+    border-radius: var(--radius-card);
+    outline: 1px solid rgba(0,0,0,.1); outline-offset: -1px;
+    filter: none; box-shadow: var(--shadow-card);
+  }
+  .codeblock { margin-top: 26px; border-radius: 10px; background: var(--ink-950); }
+  .codeblock-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .cb-tabs { display: flex; gap: 2px; }
+  .cb-tab {
+    font-family: inherit; font-size: 12px; font-weight: 500; line-height: 1;
+    padding: 7px 10px; border: 0; border-radius: 6px; cursor: pointer;
+    background: transparent; color: #a1a1aa; transition: color .15s, background .15s;
+  }
+  .cb-tab:hover { color: #fff; }
+  .cb-tab.active { color: #fff; background: rgba(255,255,255,.1); }
+  .codeblock pre { margin: 0; padding: 16px 18px; overflow-x: auto; scrollbar-width: thin; }
+  .codeblock code {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 13px; line-height: 1.75; white-space: pre; color: #e4e4e7;
+  }
+  .codeblock .c { color: #71717a; }
+  .codeblock-copy {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.12); background: var(--ink-950); color: #a1a1aa;
+    transition: color .15s, background .15s;
+  }
+  .codeblock-copy:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .codeblock-copy .ic-check { display: none; }
+  .codeblock-copy.copied .ic-copy { display: none; }
+  .codeblock-copy.copied .ic-check { display: block; color: #7dd3a0; }
+
   /* ---------- privacy ---------- */
   .pp-mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .917em; }
   .pp-tag { font-size: max(.75em, 10px); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 0 .4em; border-radius: .3em; line-height: 1.6; background: var(--green-soft); color: var(--green); flex-shrink: 0; }
@@ -440,6 +482,9 @@
   @media (max-width: 560px) {
     .span-2, .span-3 { grid-column: span 6; }
   }
+  @media (max-width: 600px) {
+    .nav-links a.ac { display: none; }
+  }
   @media (max-width: 480px) {
     .nav-links a.gh, .nav-links a.pv { display: none; }
   }
@@ -465,6 +510,7 @@
     </a>
     <div class="nav-links">
       <a class="plain" href="#features" data-umami-event="nav-features">Features</a>
+      <a class="plain ac" href="#accounts" data-umami-event="nav-accounts">Accounts</a>
       <a class="plain pv" href="#privacy" data-umami-event="nav-privacy">Privacy</a>
       <a class="plain gh" href="https://github.com/antoniosumak/agent-usage-tray" data-umami-event="github" data-umami-event-location="nav">GitHub</a>
       <a class="btn btn-primary" href="https://github.com/antoniosumak/agent-usage-tray/releases/latest" data-umami-event="download" data-umami-event-location="nav">Download</a>
@@ -703,6 +749,48 @@
     </div>
     <div class="widget-visual reveal">
       <img src="screenshots/widget.png" alt="The floating desktop widget with session and weekly quota bars." loading="lazy" width="1272" height="240">
+    </div>
+  </div>
+</section>
+
+<section id="accounts">
+  <div class="wrap widget-strip">
+    <div class="reveal">
+      <div class="kicker">Multiple Claude accounts</div>
+      <h2>Every account&rsquo;s quota. One popup.</h2>
+      <p class="section-sub">More than one Claude subscription? Drop a credential file per account into <span class="pp-mono">~/.claude-accounts</span> and the popup shows every account&rsquo;s quota bars.</p>
+      <ul class="checklist">
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Set up once per account: log in, copy the credentials file</li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Tokens refresh automatically, so logins stay live</li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>The filename is the account name; new files show up on the next poll</li>
+      </ul>
+      <div class="codeblock">
+        <div class="codeblock-head">
+          <div class="cb-tabs" role="tablist" aria-label="Shell">
+            <button class="cb-tab active" type="button" role="tab" aria-selected="true" data-shell="unix" onclick="const cb=this.closest('.codeblock');cb.querySelectorAll('.cb-tab').forEach(t=>{t.classList.toggle('active',t===this);t.setAttribute('aria-selected',t===this)});cb.querySelectorAll('pre').forEach(p=>p.hidden=p.dataset.shell!==this.dataset.shell)">macOS / Linux</button>
+            <button class="cb-tab" type="button" role="tab" aria-selected="false" data-shell="win" onclick="const cb=this.closest('.codeblock');cb.querySelectorAll('.cb-tab').forEach(t=>{t.classList.toggle('active',t===this);t.setAttribute('aria-selected',t===this)});cb.querySelectorAll('pre').forEach(p=>p.hidden=p.dataset.shell!==this.dataset.shell)">Windows</button>
+          </div>
+          <button class="codeblock-copy" type="button" aria-label="Copy commands" onclick="navigator.clipboard.writeText(this.closest('.codeblock').querySelector('pre:not([hidden])').innerText);this.classList.add('copied');setTimeout(()=>this.classList.remove('copied'),1600)">
+            <svg class="ic-copy" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>
+            <svg class="ic-check" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5"/></svg>
+          </button>
+        </div>
+        <pre data-shell="unix"><code><span class="c"># log in once with a separate config dir</span>
+CLAUDE_CONFIG_DIR=~/.claude-work claude /login
+
+<span class="c"># save the credentials; the filename is the account name</span>
+mkdir -p ~/.claude-accounts
+cp ~/.claude-work/.credentials.json ~/.claude-accounts/claude-work@acme.dev.json</code></pre>
+        <pre data-shell="win" hidden><code><span class="c"># log in once with a separate config dir</span>
+$env:CLAUDE_CONFIG_DIR="$HOME\.claude-work"; claude /login
+
+<span class="c"># save the credentials; the filename is the account name</span>
+mkdir ~\.claude-accounts -Force
+Copy-Item ~\.claude-work\.credentials.json ~\.claude-accounts\claude-work@acme.dev.json</code></pre>
+      </div>
+    </div>
+    <div class="widget-visual acct-visual reveal">
+      <img src="screenshots/multiaccount-light.png" alt="The account list from the Claude quota tab: the active login on this device, personal@gmail.com, and work@acme.dev, each with its own session and weekly bars." loading="lazy" width="1968" height="2620">
     </div>
   </div>
 </section>
