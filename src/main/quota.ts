@@ -41,25 +41,110 @@ export interface QuotaProvider {
 
 // ---- Anthropic (primary) ---------------------------------------------------
 
-// Claude Code rotates the token, so re-read the file before every request; a
+const TOKEN_URL = "https://platform.claude.com/v1/oauth/token";
+const CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"; // Claude Code's public OAuth client
+const KEYCHAIN_SERVICE = "Claude Code-credentials";
+
+interface Creds {
+  json: any; // whole .credentials.json blob; token lives under claudeAiOauth
+  source: "file" | "keychain";
+}
+
+function credsPath(): string {
+  return path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude"), ".credentials.json");
+}
+
+// Claude Code rotates the token, so re-read the blob before every request; a
 // read error just means "no token right now" (file may be mid-rewrite).
-async function readToken(): Promise<string | null> {
-  const dir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+export async function readCreds(): Promise<Creds | null> {
   let raw: string | null = null;
+  let source: Creds["source"] = "file";
   try {
-    raw = await fs.readFile(path.join(dir, ".credentials.json"), "utf8");
+    raw = await fs.readFile(credsPath(), "utf8");
   } catch {
     // macOS Claude Code keeps the blob in Keychain (same JSON shape); first run
     // prompts once — "Always Allow". Missing item exits 44 → no token.
-    if (process.platform === "darwin") raw = await readKeychain("Claude Code-credentials");
+    if (process.platform === "darwin") {
+      raw = await readKeychain(KEYCHAIN_SERVICE);
+      source = "keychain";
+    }
   }
   if (!raw) return null;
   try {
-    const token = JSON.parse(raw)?.claudeAiOauth?.accessToken;
-    return typeof token === "string" && token.length > 0 ? token : null;
+    return { json: JSON.parse(raw), source };
   } catch {
     return null;
   }
+}
+
+function tokenOf(c: Creds | null): string | null {
+  const t = c?.json?.claudeAiOauth?.accessToken;
+  return typeof t === "string" && t.length > 0 ? t : null;
+}
+
+function expired(c: Creds): boolean {
+  const e = c.json?.claudeAiOauth?.expiresAt;
+  return typeof e === "number" && e < Date.now() + 60_000;
+}
+
+// Claude Code only refreshes its token while it runs (8h lifetime), so an idle
+// night leaves an expired one behind and the usage API 401s until you prompt
+// again. Refresh it ourselves — same endpoint/body Claude Code uses — and write
+// the result back where it came from so Claude Code picks it up (it re-reads
+// the blob on 401 exactly like we do). Returns the new access token or null.
+export async function refreshAccessToken(c: Creds): Promise<string | null> {
+  const o = c.json?.claudeAiOauth;
+  if (typeof o?.refreshToken !== "string" || !o.refreshToken) return null;
+  let t: any;
+  try {
+    const res = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "refresh_token",
+        refresh_token: o.refreshToken,
+        client_id: CLIENT_ID,
+        scope: Array.isArray(o.scopes) && o.scopes.length ? o.scopes.join(" ") : undefined,
+      }),
+    });
+    if (!res.ok) return null;
+    t = await res.json();
+  } catch {
+    return null;
+  }
+  if (typeof t?.access_token !== "string" || !t.access_token) return null;
+  const now = Date.now();
+  const next = {
+    ...c.json,
+    claudeAiOauth: {
+      ...o,
+      accessToken: t.access_token,
+      refreshToken: typeof t.refresh_token === "string" && t.refresh_token ? t.refresh_token : o.refreshToken,
+      expiresAt: now + (Number(t.expires_in) || 3600) * 1000,
+      ...(typeof t.refresh_token_expires_in === "number"
+        ? { refreshTokenExpiresAt: now + t.refresh_token_expires_in * 1000 }
+        : {}),
+    },
+  };
+  await writeCreds(JSON.stringify(next), c.source).catch(() => {
+    /* still use the token in memory this poll; next poll re-reads and retries */
+  });
+  return t.access_token;
+}
+
+async function writeCreds(raw: string, source: Creds["source"]): Promise<void> {
+  if (source === "file") {
+    await fs.writeFile(credsPath(), raw, { mode: 0o600 });
+    return;
+  }
+  // Same command Claude Code uses: -U updates in place, -X takes the hex-encoded blob.
+  await new Promise<void>((resolve, reject) => {
+    execFile(
+      "security",
+      ["add-generic-password", "-U", "-a", os.userInfo().username, "-s", KEYCHAIN_SERVICE, "-X", Buffer.from(raw, "utf8").toString("hex")],
+      (err) => (err ? reject(err) : resolve()),
+    );
+  });
 }
 
 function readKeychain(service: string): Promise<string | null> {
@@ -151,13 +236,18 @@ export const anthropicProvider: QuotaProvider = {
   id: "anthropic",
   label: "Claude",
   async poll() {
-    const token = await readToken();
-    if (!token) return { status: "no-token", buckets: [] };
+    let creds = await readCreds();
+    let token = tokenOf(creds);
+    if (!creds || !token) return { status: "no-token", buckets: [] };
+    if (expired(creds)) token = (await refreshAccessToken(creds)) ?? token;
     let res = await fetchUsage(token);
     if (res.status === 401) {
-      // Claude Code may have rotated the token since our read — retry once.
-      const fresh = await readToken();
-      if (fresh && fresh !== token) res = await fetchUsage(fresh);
+      // Claude Code may have rotated the token since our read — use that; else
+      // refresh it ourselves. Still 401 after that → refresh token is dead too.
+      creds = await readCreds();
+      const rotated = tokenOf(creds);
+      const fresh = rotated && rotated !== token ? rotated : creds ? await refreshAccessToken(creds) : null;
+      if (fresh) res = await fetchUsage(fresh);
       if (res.status === 401) return { status: "relogin", buckets: [] };
     }
     if (res.status === 429) {
