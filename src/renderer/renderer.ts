@@ -300,9 +300,10 @@ function renderQuota(quota: QuotaState): string {
   // Several Claude accounts under one tab, two layouts (toggle below the tabs):
   // "By account" — one inset card per account (default login first, files
   // alphabetically), so another account's bars never read as the current
-  // account's usage. "By limit" — one card per limit kind with a bar per
-  // account, to compare accounts at a glance. Single provider (the common
-  // case, and every non-Claude tab) stays a flat, card-less list.
+  // account's usage. "All in one" — a single flat list where each limit
+  // appears once and holds one bar per account, to compare accounts at a
+  // glance. Single provider (the common case, and every non-Claude tab)
+  // stays a flat, card-less list.
   const byAccount = (a: string, b: string) => (a === "anthropic" ? -1 : b === "anthropic" ? 1 : a.localeCompare(b));
   const groups = [...new Set(mine.map((b) => b.provider))].sort(byAccount);
   const accountCard = (p: string) => {
@@ -314,36 +315,40 @@ function renderQuota(quota: QuotaState): string {
     const head = `<span class="text-[11px] font-semibold truncate pb-1" title="${esc(name)}">${esc(name)}</span>${badge}`;
     return card(head, mine.filter((b) => b.provider === p).map((b) => bucketRow(b)).join(""));
   };
-  // One card per limit (kind + label, so scoped weeklies stay separate), in
-  // first-appearance order — the default account lists session first.
-  const limitCards = () => {
+  // One flat list, no cards: each limit (kind + label, so scoped weeklies
+  // stay separate) appears once as a small header with one bar per account
+  // under it, in first-appearance order — the default account lists session
+  // first. The account name on every bar keeps rows unambiguous.
+  const combined = () => {
     const seen = new Map<string, { name: string; buckets: QuotaBucket[] }>();
     for (const b of mine) {
-      const key = `${b.kind} ${b.label}`;
+      const key = `${b.kind} ${b.label}`;
       if (!seen.has(key)) seen.set(key, { name: bucketName(b), buckets: [] });
       seen.get(key)!.buckets.push(b);
     }
     return [...seen.values()]
-      .map((g) => {
-        const head = `<span class="text-[11px] font-semibold truncate pb-1" title="${esc(g.name)}">${esc(g.name)}</span>`;
-        const body = g.buckets
+      .map(
+        (g) => `
+      <div class="space-y-2">
+        <div class="text-[10px] uppercase tracking-wide font-semibold ${MUTED} pt-1.5 border-t border-[#f1f1f1] dark:border-neutral-800 first:border-t-0 first:pt-0">${esc(g.name)}</div>
+        ${g.buckets
           .sort((a, b) => byAccount(a.provider, b.provider))
           .map((b) => bucketRow(b, accountName(b.provider)))
-          .join("");
-        return card(head, body);
-      })
+          .join("")}
+      </div>`,
+      )
       .join("");
   };
   const groupBtn = (mode: string, label: string) =>
     `<button data-quota-group="${mode}" class="flex-1 py-0.5 rounded-md cursor-pointer transition-colors ${mode === quotaGroupBy ? RANGE_ACTIVE : RANGE_INACTIVE}">${label}</button>`;
   const groupToggle =
     groups.length > 1
-      ? `<div class="flex gap-0.5 p-0.5 rounded-lg bg-[#ebebeb] dark:bg-neutral-800 text-[10px] font-medium">${groupBtn("account", "By account")}${groupBtn("limit", "By limit")}</div>`
+      ? `<div class="flex gap-0.5 p-0.5 rounded-lg bg-[#ebebeb] dark:bg-neutral-800 text-[10px] font-medium">${groupBtn("account", "By account")}${groupBtn("limit", "All in one")}</div>`
       : "";
   const rows =
     groups.length > 1
       ? quotaGroupBy === "limit"
-        ? limitCards()
+        ? combined()
         : groups.map(accountCard).join("")
       : mine.map((b) => bucketRow(b)).join("");
   return header + tabs + groupToggle + rows;
