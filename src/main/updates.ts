@@ -32,7 +32,7 @@ export function startUpdates(onUpdate: (u: UpdateInfo) => void): void {
     ready = true;
     onUpdate({ version: i.version, status: "downloaded" });
   });
-  autoUpdater.on("error", () => {}); // network/feed error → stay silent
+  autoUpdater.on("error", (e) => console.error("[updates]", e.message)); // network/feed error → log, stay quiet in UI
 
   void autoUpdater.checkForUpdates();
   setInterval(() => void autoUpdater.checkForUpdates(), CHECK_INTERVAL_MS);
